@@ -6,7 +6,7 @@ PrintEvery            10000
 PrintPropertiesEvery  10000
 
 Forcefield            local
-CutOffVDW             12.8
+CutOffVDW             {cutoff}
 UseChargesFromCIFFile no
 
 Framework 0

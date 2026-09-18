@@ -31,7 +31,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 FF_FILES = ["pseudo_atoms.def", "force_field_mixing_rules.def", "force_field.def", "CO2.def", "helium.def"]
 PRESSURES_PA = [1e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 3e6, 5e6]  # 0.01 ... 5 MPa
-R_CUT = 12.8  # A, LJ and real-space Coulomb cutoff
+R_CUT = 12.0  # A, LJ and real-space Coulomb cutoff (12.8 left only 0.03 A margin along c; see NOTES.md)
 
 
 def read_cell(cif):
@@ -98,7 +98,7 @@ def main(argv=None):
         d.mkdir(parents=True, exist_ok=True)
         tmpl = (ROOT / "templates" / "helium_void_fraction.input.template").read_text()
         cycles = args.cycles if args.cycles != 50000 else 500000  # RASPA example default for He
-        (d / "simulation.input").write_text(tmpl.format(cycles=cycles, framework=cif.stem,
+        (d / "simulation.input").write_text(tmpl.format(cycles=cycles, framework=cif.stem, cutoff=R_CUT,
                                                         unit_cells=" ".join(map(str, n))))
         shutil.copy(cif, d / cif.name)
         for f in FF_FILES:
@@ -116,7 +116,7 @@ def main(argv=None):
             cycles=args.cycles, init_cycles=args.init, print_every=args.print_every,
             use_cif_charges="no" if args.no_cif_charges else "yes",
             framework=cif.stem, unit_cells=" ".join(map(str, n)), helium_vf=args.helium_vf,
-            temperature=args.temperature, pressure=f"{p:.6g}")
+            temperature=args.temperature, pressure=f"{p:.6g}", cutoff=R_CUT)
         (d / "simulation.input").write_text(text)
         shutil.copy(cif, d / cif.name)
         for f in FF_FILES:

@@ -11,6 +11,14 @@ Why the last check matters: RASPA does NOT stop on a missing LJ pair; it prints
 "WARNING: THERE ARE ATOM-PAIRS WITH NO VDW INTERACTION" and sets that
 interaction to zero. This script exits with status 1 instead.
 
+FIRST GATE -- phase identity by cell (not by refcode). Accepted: MIL-53(Al) lp,
+Loiseau et al., Chem. Eur. J. 2004, 10, 1373: Imma (No. 74), a = 6.608,
+b = 16.675, c = 12.813 A, V ~ 1412 A^3, Al4C32H20O20 (76 atoms), 832.4 g/mol.
+Rejected: as-synthesised Pnma (17.129, 6.628, 12.182 A; bdc in the pores) and
+the monoclinic narrow-pore hydrated forms (Cc / P21/c). The comparison is done on
+the SORTED axis lengths, so a P1 cell with permuted axes is still recognised
+(and reported as permuted). Any mismatch -> exit status 1, nothing else is trusted.
+
 Usage: python scripts/check_cif.py structures/MIL-53_Al_lp.cif
 """
 import re
@@ -24,6 +32,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from make_inputs import R_CUT, replication  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
+LP_CELL = (6.608, 16.675, 12.813)            # A, Imma, Loiseau 2004 (lp / ht form)
+LP_COMPOSITION = {"Al": 4, "C": 32, "H": 20, "O": 20}
+LP_MASS = 832.4                               # g/mol per cell
+AS_SYNTH_CELL = (17.129, 6.628, 12.182)      # Pnma, as-synthesised -- must be rejected
+REL_TOL_LENGTH = 0.01                         # 1 % per axis
+TOL_ANGLE = 0.5                               # deg
 MASS = {"Al": 26.981538, "O": 15.9994, "C": 12.0107, "H": 1.00794}
 
 
@@ -68,6 +82,26 @@ def main(cif):
     print(f"volume [A^3]    : {h_vol:.2f}")
     print(f"space group     : {sg.group(1).strip() if sg else 'not given'}")
 
+    # ---- gate 1: is this the lp cell?
+    rel = [abs(x - y) / y for x, y in zip(sorted(lengths), sorted(LP_CELL))]
+    rel_as = [abs(x - y) / y for x, y in zip(sorted(lengths), sorted(AS_SYNTH_CELL))]
+    ortho = all(abs(g - 90.0) < TOL_ANGLE for g in angles)
+    print("expected lp    : a b c = 6.608 16.675 12.813 A, 90/90/90, V ~ 1412 A^3")
+    print("rel. deviation : " + ", ".join(f"{100 * r:.2f} %" for r in rel) + " (sorted axes)")
+    cell_ok = ortho and max(rel) < REL_TOL_LENGTH
+    if cell_ok:
+        order = "same order" if all(abs(x - y) / y < REL_TOL_LENGTH for x, y in zip(lengths, LP_CELL)) \
+            else "axes permuted with respect to Imma a,b,c (harmless, reported for the record)"
+        print(f"CELL CHECK     : PASS -- MIL-53(Al) lp ({order})")
+    else:
+        why = "not orthorhombic (narrow-pore monoclinic?)" if not ortho else \
+            "matches the AS-SYNTHESISED Pnma cell" if max(rel_as) < REL_TOL_LENGTH else \
+            "does not match the lp cell"
+        if ortho and abs(h_vol - 1412 / 2) < 15:
+            why += "; volume ~ half of lp -> possibly a primitive cell of the body-centred lattice"
+        print(f"CELL CHECK     : FAIL -- {why}. STOP.")
+        return 1
+
     cols, rows = atom_site_loop(text)
     lab_i = cols.index("_atom_site_label")
     sym_i = cols.index("_atom_site_type_symbol") if "_atom_site_type_symbol" in cols else None
@@ -83,6 +117,11 @@ def main(cif):
     mass = sum(MASS.get(e, float("nan")) for e in elements)
     print(f"unit-cell mass  : {mass:.3f} g/mol  (only meaningful for a P1 cell)")
     print(f"formula units   : {mass / 208.1045:.3f} x Al(OH)(O2C-C6H4-CO2), M = 208.1045 g/mol")
+    if comp != LP_COMPOSITION or abs(mass - LP_MASS) > 0.5:
+        print(f"COMPOSITION    : FAIL -- expected {LP_COMPOSITION} ({LP_MASS} g/mol), got {comp}. STOP.")
+        ok = False
+    else:
+        print("COMPOSITION    : PASS -- Al4C32H20O20, 76 atoms (includes the mu-OH hydrogens)")
 
     if q_i is None:
         print("CHARGES         : ABSENT (no _atom_site_charge column)")

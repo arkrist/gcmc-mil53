@@ -6,12 +6,12 @@ NumberOfInitializationCycles  {init_cycles}          # equilibration, discarded 
 PrintEvery                    {print_every}           # status print -> loading-vs-cycle trace
 RestartFile                   no
 
-# ---- Force field: UFF framework LJ + TraPPE CO2, Lorentz-Berthelot, truncated LJ + tail corrections
+# ---- Force field: UFF framework LJ + TraPPE CO2, Lorentz-Berthelot, truncated LJ (12.0 A) + tail corrections
 Forcefield                    local             # read ./pseudo_atoms.def, ./force_field_mixing_rules.def, ./force_field.def
-CutOffVDW                     12.8              # [A]
+CutOffVDW                     {cutoff}              # [A]
 # ---- Electrostatics: Ewald summation, real-space cutoff equal to the LJ cutoff
 ChargeMethod                  Ewald
-CutOffChargeCharge            12.8              # [A]
+CutOffChargeCharge            {cutoff}              # [A]
 EwaldPrecision                1e-6              # relative accuracy -> sets alpha and k-vectors
 UseChargesFromCIFFile         {use_cif_charges}               # framework partial charges from the CIF (_atom_site_charge)
 
@@ -19,7 +19,7 @@ UseChargesFromCIFFile         {use_cif_charges}               # framework partia
 Framework 0
 FrameworkName                 {framework}
 RemoveAtomNumberCodeFromLabel yes               # 'Al1','O12' -> 'Al','O' to match pseudo_atoms.def
-UnitCells                     {unit_cells}             # all perpendicular box widths > 2 x 12.8 A
+UnitCells                     {unit_cells}             # all perpendicular box widths > 2 x cutoff
 HeliumVoidFraction            {helium_vf}          # from runs/helium_void_fraction (needed for excess loading)
 ExternalTemperature           {temperature}
 ExternalPressure              {pressure}
