@@ -21,6 +21,7 @@ the SORTED axis lengths, so a P1 cell with permuted axes is still recognised
 
 Usage: python scripts/check_cif.py structures/MIL-53_Al_lp.cif
 """
+import itertools
 import re
 import shlex
 import sys
@@ -63,6 +64,28 @@ def atom_site_loop(text):
     sys.exit("no _atom_site_label loop found")
 
 
+def implied_conventional(lengths, angles, tol_deg=0.3):
+    """Smallest orthogonal cell spanned by short lattice vectors (n_i in -2..2).
+
+    Recognises a primitive / reduced setting of an orthorhombic lattice (the
+    CoRE 2014 DDEC files store I-centred MIL-53 as a 38-atom primitive cell).
+    Returns (sorted lengths, volume, multiplicity vs file cell) or None.
+    """
+    from make_inputs import cell_matrix
+    h = cell_matrix(lengths, angles)
+    vfile = abs(np.linalg.det(h))
+    vecs = sorted(((np.linalg.norm(np.array(n) @ h), np.array(n) @ h)
+                   for n in itertools.product(range(-2, 3), repeat=3) if any(n)), key=lambda x: x[0])[:80]
+    best = None
+    for (l1, v1), (l2, v2), (l3, v3) in itertools.combinations(vecs, 3):
+        cosines = [abs(a @ b) / (np.linalg.norm(a) * np.linalg.norm(b)) for a, b in ((v2, v3), (v1, v3), (v1, v2))]
+        if all(c < np.sin(np.radians(tol_deg)) for c in cosines):
+            vol = abs(np.linalg.det(np.array([v1, v2, v3])))
+            if vol > 1 and (best is None or vol < best[1] - 1e-6):
+                best = (sorted([l1, l2, l3]), vol, vol / vfile)
+    return best
+
+
 def ff_labels():
     txt = (ROOT / "forcefield" / "force_field_mixing_rules.def").read_text().splitlines()
     return {ln.split()[0] for ln in txt if re.search(r"\blennard-jones\b", ln, re.I)}
@@ -74,7 +97,7 @@ def main(cif):
     lengths, angles, widths, n = replication(cif)
     h_vol = np.prod(lengths) * np.sqrt(1 - sum(np.cos(np.radians(angles)) ** 2)
                                        + 2 * np.prod(np.cos(np.radians(angles))))
-    sg = re.search(r"_symmetry_space_group_name_H-M\s+'?([^'\n]+)'?", text) or \
+    sg = re.search(r"_symmetry_space_group_name_H-M\s+['\"]?([^'\"\n]+)['\"]?", text) or \
         re.search(r"_space_group_name_H-M_alt\s+'?([^'\n]+)'?", text)
     print(f"file            : {cif}")
     print(f"cell a b c [A]  : {lengths[0]:.4f} {lengths[1]:.4f} {lengths[2]:.4f}")
@@ -94,6 +117,12 @@ def main(cif):
             else "axes permuted with respect to Imma a,b,c (harmless, reported for the record)"
         print(f"CELL CHECK     : PASS -- MIL-53(Al) lp ({order})")
     else:
+        conv = None if ortho else implied_conventional(lengths, angles)
+        if conv and max(abs(x - y) / y for x, y in zip(conv[0], sorted(LP_CELL))) < REL_TOL_LENGTH:
+            print(f"CELL CHECK     : LATTICE MATCHES lp, but the file is a PRIMITIVE/REDUCED setting "
+                  f"(implied conventional cell {' '.join(f'{x:.4f}' for x in conv[0])} A, V = {conv[1]:.1f} A^3, "
+                  f"{conv[2]:.0f}x the file cell). Using it as-is or transforming it is a decision. STOP.")
+            return 1
         why = "not orthorhombic (narrow-pore monoclinic?)" if not ortho else \
             "matches the AS-SYNTHESISED Pnma cell" if max(rel_as) < REL_TOL_LENGTH else \
             "does not match the lp cell"

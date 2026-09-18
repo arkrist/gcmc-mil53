@@ -74,7 +74,7 @@ test is therefore made on the absolute loading.
 
 ## Phase 2: MIL-53(Al) lp setup
 
-### Structure (**OPEN**: waiting for `structures/MIL-53_Al_lp.cif`, CoRE MOF DDEC set)
+### Structure (**OPEN**: candidate found, setting decision pending; see "Structure provenance")
 **The phase is identified by its cell, not by a CSD refcode** (decision of 2026-09-19).
 The accepted phase is MIL-53(Al) lp (high-temperature, empty) from Loiseau et al.,
 Chem. Eur. J. 2004, 10, 1373: orthorhombic Imma (No. 74), a = 6.608, b = 16.675,
@@ -92,6 +92,53 @@ charges (present or absent, net charge, per-element range), the unit-cell mass,
 and whether every atom label has LJ parameters. Expected for a correct P1 lp
 cell: 4 formula units Al(OH)(O2C-C6H4-CO2), i.e. Al4 O20 C32 H20 = **76 atoms**,
 M_uc = 4 x 208.10 = **832.4 g/mol**, neutral.
+
+### Structure provenance (search of 2026-09-19)
+Search order as instructed: CoRE MOF (GitHub mirrors, then the Zenodo DDEC record),
+QMOF, simulation SI, Ghoufi's repository. No CSD access. Every CIF was screened by
+cell against the Loiseau lp cell (sorted axes, 1 %). Files in a primitive/reduced
+setting were compared through their implied conventional cell (lattice-vector
+search, analysis only, file untouched). 23,845 CoRE 2014/2019 CIFs + 2,932 DDEC
+CIFs + 2,665 CoRE 2024 SI CIFs were scanned.
+
+| # | file | source (exact) | SG in file | cell in file [A, deg] | atoms / composition / M | charges | channels | verdict |
+|---|---|---|---|---|---|---|---|---|
+| **1** | `re-labeled/SABVUN_clean.cif` (sha256 `9cc2086f...d0d6b8b8`) | **CoRE MOF 2014 DDEC Database**, Nazarian, Camp & Sholl, Chem. Mater. 2016, 28, 785; Zenodo record 3986573 (DOI 10.5281/zenodo.3986573, published 2016-01-07), `https://zenodo.org/records/3986573/files/core-mof-1.0-ddec.tar`, md5 `a2e3578003968739640b6faeed361299` (matches Zenodo) | P 1, **reduced primitive setting** of the I-centred lattice | 6.6085 11.0216 11.0216 / 98.308 107.445 107.445, V 705.98. **Implied conventional: 6.6085 12.8130 16.6750, 90/90/90, V 1412.0 = Loiseau lp exactly** | 38 = Al2C16H10O10 per primitive cell (x2 = Al4C32H20O20, 76 atoms, 832.4 g/mol) | **present, DDEC** (file header: "VASP DFT with PBE;DDEC"), net +0.000001 e; Al +1.847, O(H) -1.12, H(O) +0.477 | empty: all 38 atoms form one bonded network | **lp. Best candidate.** The CoRE 2024 index gives SABVUN the DOI 10.1002/chem.200305413 (Loiseau 2004) |
+| 2 | `re-labeled/WAYMEQ_clean.cif` | same DDEC tar | P 1, reduced primitive | 6.612 11.034 11.034 / 70.4 72.6 72.6; implied conv. 6.6125 12.7143 16.7807 (<= 0.8 %) | **36** = Al2C16H8O10: **mu-OH H missing** | DDEC | empty | lp lattice, **rejected** (incomplete) |
+| 3 | `WAYMEQ_SL.cif` | CoRE MOF 2019 ASR (public, v1.1.4 per package README), GitHub `coudertlab/CoRE-MOF` commit `a931fb5809696bbd43fbdec54341ee95b1d323db`, `src/CoRE_MOF/data/2019-ASR.tar.xz` | P1 | 16.7807 6.6125 12.7143 / 90 90 90, V 1410.8 | 76, Al4C32H20O20, 832.415 | **absent** | empty | lp, **not usable** (no charges); H added by CoRE curators (header `WAYMEQ_clean_h`, Materials Studio 2015) |
+| 4 | `cm503311x_aloh300K_clean.cif` (+ 150-500 K series) | same CoRE 2019 ASR/FSR; SI of Chem. Mater., DOI prefix 10.1021/cm503311x | P 1 | 6.6295 16.7579 12.7936 / 90 90 90 | **56 = Al4C32O20: no H at all** | absent | - | lp cell, **rejected** (no H, no charges) |
+| 5 | `CR/2019[Al][bpq]3[ASR]3.cif` (refcode `S0885715619000460sup002`) | **CoRE MOF 2024**, GitHub `Chung-Research-Group/CoRE-MOF-Tools` commit `3f9fff76136b83135195013fa88d313478b23118`, `CoREMOF/data/SI/CR.zip`; structure from SI of Powder Diffraction, DOI 10.1017/S0885715619000460 | P 1, primitive | 11.0559 x3 / 145.09 109.00 81.62; implied conv. 6.632 12.840 16.736, V 1425 (<= 0.4 %) | 38 = Al2C16H10O10 | **PACMAN v1.1** (ML surrogate of DDEC6, not DDEC) | - | lp, not Loiseau; **backup only** |
+| - | SABVOH, SABVOH01 | CoRE 2014 / 2019 / DDEC | Pnma or P1 | 17.129 6.628 12.182 | 76 | - | - | **as-synthesised, rejected** |
+| - | SABWAU01 | CoRE 2024 index only (CSD-derived CIFs are not on GitHub) | P21/c | LCD 2.8 A, VF 0.40 | 152 | - | - | **narrow-pore, rejected** |
+| - | EGELUY, EGELUY01 ("MIL-53ht"), EHALOP, QONQEQ, WAYMIU, WAYMOA, QONQAM | CoRE 2014/2019/DDEC | P1 / reduced | conventional deviations 1.6-8.6 % | 76 or 38 | - | - | not the Loiseau lp cell, rejected |
+
+Other sources checked:
+- **QMOF** (`Andrew-S-Rosen/QMOF`): the GitHub repo holds tools only; the structures are
+  on Figshare. Not searched, since candidate 1 already exists.
+- **Simulation-paper SI**: not needed after candidate 1.
+- **A. Ghoufi, `aghoufi/DUT-49-Cu--OMD`** (single commit `cd684dfebb`, 2022-11-23):
+  two files, `FIELD-DUT49Cu` and `FIELD-MIL53Cr`, both **DL_POLY FIELD files, with no
+  coordinates** (no CONFIG, no CIF). `FIELD-MIL53Cr` is titled "Mil53_Cr_Lp": 2432
+  framework atoms (= 32 cells x 76), fully **flexible** (2304 bonds, 3584 angles,
+  1536 dihedrals), charges Cr +1.418, O(H) -0.730, H(O) +0.299, O(carboxylate) -0.566.
+  The Cr LJ parameters (eps 1.297 kJ/mol = 156.0 K, sigma 3.911 A) equal DREIDING's
+  **Al** values. Guests: CO2 (q_C +0.6512, C=O 1.162 A, harmonic bend) and N2.
+  **No Al structure and no lp geometry usable for us** (Cr, and no coordinates).
+
+**Caveats on candidate 1** (to decide, not to fix silently):
+1. **Setting.** Primitive 38-atom cell. Options: (a) use it **as-is** (RASPA
+   handles triclinic cells; replication 5 x 3 x 3 = 45 primitive = 22.5
+   conventional cells, about 1.4x the cost), or (b) an **exact change of basis** to the
+   conventional orthorhombic cell (a = p2+p3, etc.), mapping the same atoms, the same
+   charges and all interatomic distances unchanged, 76 atoms, replication 4 x 2 x 2.
+   Neither changes the physics.
+2. The **first line is not CIF** but a Python-dict metadata line, and its `_srcid`
+   reads **`CAKYAQ_clean`**, not SABVUN (apparently a metadata artefact of the
+   database; the cell, composition and DOI all identify SABVUN). It must be
+   commented out for RASPA.
+3. **mu-OH geometry**: O-H = 0.86 A (the X-ray-like short distance, vs about 0.97 A
+   for a real O-H). This is the experimental geometry, on which the DDEC charges were
+   computed. Kept as is and noted.
 
 ### Force field (`forcefield/`)
 | element | choice | reason |
@@ -170,6 +217,35 @@ theta_He is **method-dependent**, so it is recorded with its parameters:
 - **We never convert a reference point between absolute and excess** unless the
   reference itself states the pore volume or void fraction it used. Without it,
   the point is plotted only against the matching column.
+- **Pressure window for Bourrelly 2005: P >= 9 bar only** (the fully open lp region,
+  see the last section). Points at 5-9 bar are in the breathing step and are shown
+  greyed out, labelled "not compared". The figure caption states the restriction.
+- Temperature: reference at 304 K, simulation at 303 K. The 1 K offset is noted and
+  not corrected.
+- **OPEN, convention of the Bourrelly points:** the CSV is declared "absolute, mmol/g".
+  Bourrelly 2005 is an experimental (manometric) study, and such data are usually
+  **excess**. At 304 K and 30 bar, excess and absolute differ by roughly
+  rho_bulk x V_pore ~ 0.8 mmol/g (bulk CO2 ~ 60 kg/m^3, pore volume ~ 0.55 cm^3/g),
+  about 8 % of the loading. Need confirmation that the paper itself reports absolute
+  amounts (and, if so, with which pore volume). Otherwise the points are compared with
+  our **excess** column.
+
+### Low-pressure test: Henry constant vs Coudert's K_lp (Phase 3)
+Target: K_lp ~ 2.6e-5 mol kg^-1 Pa^-1 (Coudert 2008, Langmuir fit, no error bar).
+Plan:
+1. Weighted linear fit through the origin, n_abs = K_H p, over the lowest pressures
+   where the isotherm is still linear. A point is accepted into the fit only if
+   K_H p / n_sat < ~5 %, checked a posteriori. With K_lp, 0.1 bar gives
+   ~0.26 mol/kg, about 3 % of saturation, so 0.1 and 0.5 bar will be tested for
+   linearity. Weights 1/sem^2, uncertainty from the fit covariance.
+2. Cross-check: K_H = q_sat * b from a single-site Langmuir fit to the whole computed
+   isotherm (the same functional form Coudert used), uncertainty from the covariance.
+3. (Proposal, not yet approved) An independent Widom test-particle run gives the
+   Henry coefficient directly (RASPA prints it in mol/kg/Pa); it costs a few minutes.
+   Would need your go-ahead.
+If the grid is too coarse at low pressure (curvature already at 0.1 bar), adding
+0.01-0.05 bar points is proposed rather than extrapolated silently.
+
 
 ### Resume logic
 `run_isotherm.sh` skips a point whose output contains "Simulation finished". An
@@ -181,36 +257,58 @@ uninterrupted run.
 
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 
-**What it gives.** The adsorption isotherm of CO2 in the **lp structure, held
-fixed**. This is the lp branch: the loading the large-pore form would have at each
-pressure if it stayed open. It tests the force field (UFF + DDEC charges + TraPPE)
-for CO2-lp interactions, and it is directly comparable with other rigid-lp
-simulations and with experimental data in the pressure range where the real
-material is in the lp form.
+(Sources read by the project owner on 2026-09-19: Bourrelly 2005, Coudert 2008,
+Ghoufi & Maurin 2010.)
 
-**What it cannot give, by construction.** MIL-53(Al) breathes. Experimentally, CO2
-adsorption drives the empty lp form to the narrow-pore (np) form at low pressure,
-and the np form reopens to lp at higher pressure, which gives a stepped isotherm
-(Bourrelly et al., JACS 2005, 127, 13519; check the step pressures there for the
-temperature used). With the cell and atoms frozen in the lp geometry, the
-simulation has no np state to go to. **The np-lp step cannot appear.** Any
-disagreement in the pressure range where the real solid is np reflects the
-missing structural transition, not the force field.
+**The experiment.** Bourrelly et al., JACS 2005, 127, 13519, Fig. 2: CO2 and CH4
+isotherms at **304 K up to 30 bar** for **both** MIL-53(Al) (top panel) and
+MIL-53(Cr) (bottom panel). CO2 shows a step at **~6 bar** in both metals. The Al
+panel is our experimental reference (`reference/bourrelly2005_MIL53Al_CO2_304K.csv`,
+digitised by the project owner, not by us).
+
+**What happens physically** (Coudert et al., JACS 2008, 130, 14294, Fig. 5b,
+arXiv:1904.09588, which analyses exactly this system). At 304 K the empty framework
+is **lp**. CO2 first **closes** it, lp -> np near **0.3 bar**, because np has the
+higher affinity (Langmuir Henry constants K_np ~ 9.0e-5 vs **K_lp ~ 2.6e-5
+mol kg^-1 Pa^-1**). CO2 then **reopens** it, np -> lp near **6 bar**, because lp has
+the larger pore volume. This is a double transition, case "c" of Coudert's
+taxonomy. The free-energy difference between the two empty structures is
+dF(lp -> np) ~ **2.5 kJ/mol per unit cell**. The predicted low-pressure transition
+at 0.3 bar was confirmed by microcalorimetry at 0.25 bar. The reopening step spans
+**5-9 bar**: np below 5 bar, fully open lp above 9 bar.
+
+**What our simulation is.** With the lp structure held rigid, we compute the
+**"virtual" rigid-host lp isotherm**, the blue dashed curve of Coudert Fig. 5b.
+The np-lp breathing cannot appear, **by construction**: the simulation has no np
+state to go to. Consequences for the comparison:
+- It should agree with experiment **only for P >= 9 bar**, where the real solid is
+  fully lp. The comparison with the Bourrelly points is therefore restricted to
+  P >= 9 bar, and every figure caption says so.
+- Below 5 bar the real solid is np. Our lp loading there is not expected to match
+  and is not a force-field test.
+- **Quantitative low-pressure test instead:** the initial slope (Henry constant) of
+  our isotherm is compared with K_lp ~ 2.6e-5 mol kg^-1 Pa^-1 from Coudert's
+  Langmuir fit, with the uncertainty of our slope (Phase 3). This tests the
+  CO2-lp interaction where the lp assumption holds by definition. Note: Coudert
+  reports K_lp without an error bar, and it comes from a Langmuir fit, so "agreement"
+  will be judged against our own uncertainty plus a stated tolerance, not as exact.
 
 **What would be needed to capture the transition.**
-1. **Osmotic ensemble** (N_host, mu_CO2, sigma, T). The stable phase at each
-   pressure minimises the osmotic potential, which combines, for each rigid phase,
-   the free-energy difference of the empty hosts, dF_host(np-lp) (from DFT or
-   experiment), and the grand potential computed from that phase's rigid-GCMC
-   isotherm. So one rigid np isotherm, the lp one from this work, and dF_host give
-   a first estimate of the step pressures (Coudert et al., JACS 2008, 130, 14294).
-2. **Hybrid GCMC/MD with a flexible framework.** GCMC insertion/deletion moves
-   alternate with MD or cell-volume moves (NPT, or the full osmotic ensemble with
-   volume moves). This needs a flexible MIL-53 force field that reproduces the
-   np and lp minima and the barrier between them (e.g. the flexible MIL-53 models of
-   the Maurin group; Ghoufi & Maurin, J. Phys. Chem. C 2010, 114, 6496). RASPA
-   supports flexible frameworks and volume moves (see its
-   `examples/Advanced/5_Adsorption_of_CO2_in_Flexible_IRMOF-1_Osmotic`), and so
-   does LAMMPS (`fix gcmc` plus `fix npt`).
-
-*Citations in this section are from memory; check them before the presentation.*
+1. **Osmotic ensemble** (N_host, mu_CO2, sigma, T), as in Coudert 2008. The stable
+   phase at each pressure minimises the osmotic potential, which combines, for each
+   rigid phase, dF_host(lp -> np) and the grand potential from that phase's
+   rigid-GCMC isotherm. Needed on top of this work: a rigid np isotherm plus
+   dF_host (~2.5 kJ/mol/uc). This yields the step pressures.
+2. **Hybrid GCMC/MD (HOMC) with a flexible framework**, with a force field that has
+   both np and lp minima. Ghoufi & Maurin, J. Phys. Chem. C 2010, 114, 6496
+   (DOI 10.1021/jp911484g): their HOMC scheme **captured the lp -> np transition at
+   0.35 bar but failed to capture the np -> lp reopening**, which they attributed to
+   the highly ordered orientation of CO2 in the np channels. They needed a
+   **phase-mixture model** to reproduce the full isotherm. So even a flexible
+   simulation does not trivially give the second step.
+   Their settings, useful as a sanity reference: **32 unit cells**, Ewald
+   electrostatics, van der Waals truncated at **12 A**, **Harris-Yung rigid CO2**,
+   **300 K**.
+   (For comparison, the DL_POLY `FIELD-MIL53Cr` published by A. Ghoufi, see
+   "Structure provenance", describes 2432 atoms = 32 cells x 76, with a flexible
+   framework and a CO2 model with q_C = +0.6512, i.e. not the rigid HY model of 2010.)
