@@ -324,8 +324,10 @@ a fit over the whole isotherm. On an energetically heterogeneous surface the tru
 Henry constant exceeds the Langmuir K. So the like-for-like comparison with Coudert
 is (2), and (1)/(3) vs (2) measures how non-Langmuir our isotherm is.
 
-**First result (500-cycle test, 303 K): K_H(Widom) = 1.91e-4 +/- 0.11e-4
-mol/kg/Pa, about 7x Coudert's K_lp.** With the framework charges off, 1.66e-4, so
+**Result (3), final, `runs/henry_widom_CO2`, 20,000 cycles, 303 K: K_H(Widom) =
+1.933e-4 +/- 0.007e-4 mol/kg/Pa** (95 % CI; blocks 1.924-1.937e-4),
+<U_gh> - <U_h> = -22.85 +/- 0.03 kJ/mol, **7.4x Coudert's K_lp**. (500-cycle test:
+1.91e-4 +/- 0.11e-4.) With the framework charges off, 1.66e-4, so
 the difference is mostly UFF dispersion, not the mu-OH electrostatics.
 <U_gh> - <U_h> = -22.9 kJ/mol. The full run and the isotherm-based numbers (1, 2) will
 show whether this is a strong-site Henry regime (large K_H, smaller Langmuir K) or a
