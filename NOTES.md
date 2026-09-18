@@ -74,7 +74,69 @@ test is therefore made on the absolute loading.
 
 ## Phase 2: MIL-53(Al) lp setup
 
-### Structure (**OPEN**: candidate found, setting decision pending; see "Structure provenance")
+### Structure: DECIDED 2026-09-19. `structures/MIL-53_Al_lp.cif` (SABVUN, CoRE MOF 2014 DDEC)
+**Accepted:** `SABVUN_clean.cif` from the CoRE MOF 2014 DDEC set (Nazarian, Camp &
+Sholl, Chem. Mater. 2016, 28, 785; Zenodo 3986573). The lattice decides: the implied
+conventional cell 6.6085 / 12.8130 / 16.6750 A, V = 1412.0 A^3, is identical to
+Loiseau's lp values. DDEC charges are in the same file as the coordinates, the
+channels are empty and the mu-OH hydrogens are present.
+
+**Refcode correction.** The refcode first given for the lp form, SABWAU, was
+**wrong**. The CoRE 2024 index shows SABWAU01 is a monoclinic P21/c **narrow-pore**
+form (LCD 2.8 A), while **SABVUN** is the lp form: its lattice matches, and the
+CoRE 2024 index lists it under the Loiseau 2004 DOI, 10.1002/chem.200305413. The
+`_srcid 'CAKYAQ_clean'` in the file's metadata line is a **database artefact**. Cell,
+composition and DOI govern.
+
+**Files and checksums**
+- `structures/original/SABVUN_clean.cif`: the downloaded original, **untouched**
+  (read-only). md5 `7b79c613f3c5da8c31a051df553575ff`, sha256
+  `9cc2086f8654414508382fedd2e77874a636d63e082c4d5376186a5cd0d6b8b8`. It comes from
+  `core-mof-1.0-ddec.tar` (md5 `a2e3578003968739640b6faeed361299`, identical to
+  the md5 published by Zenodo), member `./re-labeled/SABVUN_clean.cif`.
+- `structures/SABVUN_clean_primitive.cif`: a copy whose **only** change is that the
+  Python-dict metadata line (not CIF) is commented out (diff-verified).
+- `structures/MIL-53_Al_lp.cif`: the **file used**. An exact change of basis to the
+  conventional orthorhombic cell (`scripts/primitive_to_conventional.py`), chosen
+  because it matches the convention of every paper we compare against, gives the
+  4 x 2 x 2 replication the cutoff was sized for, and is cheaper (16 conventional
+  cells instead of 22.5).
+
+**Change of basis and its verification** (run on the re-read output file; the
+agreed rule was to fall back to the primitive cell on any failure, never to patch):
+C = M P with M = [[-1,0,0],[0,-1,1],[1,1,1]] (rows = conventional a, b, c).
+
+| check | result |
+|---|---|
+| det(M) = 2 | 2.000000 PASS |
+| 76 atoms, no losses, no duplicates | 76 = 2 x 38, each primitive atom exactly twice; shortest distance 0.8615 A (the O-H) PASS |
+| composition, molar mass | Al4C32H20O20, 832.415 g/mol PASS |
+| net charge (tolerance 1e-4 e) | +2e-6 e; every atom keeps its source charge PASS |
+| crystal density | 0.978966 g/cm^3 for both files PASS |
+| nearest-neighbour distances | all 76 per-atom neighbour lists within 5 A identical to the source atom's, max delta 2e-8 A; NN histogram identical PASS |
+| resulting cell | 6.6085 / 16.6750 / 12.8130 A; angles within 1.7e-4 deg of 90, inherited from the rounding in the primitive file (b = 11.02159403 vs c = 11.02160000), kept as is |
+
+`check_cif.py structures/MIL-53_Al_lp.cif`: CELL PASS (0.01/0.00/0.00 %),
+COMPOSITION PASS, charges present (net +2e-6 e; Al +1.847, O -0.65 (carboxylate)
+/ -1.12 (hydroxyl), H +0.11 (aromatic) / +0.477 (hydroxyl)), FF CHECK PASS,
+replication 4 x 2 x 2. RASPA reads 1216 framework atoms and 13318.65 g/mol
+(= 16 x 832.415), with no missing-VDW warning.
+
+**Known systematic: mu-OH geometry and parameters.** O-H = 0.86 A as published: the
+short X-ray-like distance, where a real O-H bond is about 0.97 A. It is **kept
+deliberately**, because the DDEC charges were computed on this geometry and
+consistency between charges and geometry matters more than a realistic bond length.
+Why it matters *here*: Bourrelly 2005 concludes that CO2 first sorbs onto the
+**hydroxyl groups**, at **0.75 CO2 per structural OH** before the step, so the mu-OH
+is the key adsorption site in this material. A short O-H (H closer to O, so a
+smaller effective OH dipole and a different H position) and generic UFF parameters
+for H (eps 22.1 K, sigma 2.57 A) act on exactly the interaction that matters most.
+First quantification (Widom, infinite dilution, 500 cycles): switching the
+framework charges off lowers K_H only from 1.91e-4 to 1.66e-4 mol/kg/Pa (-15 %) and
+<U_gh> from -22.9 to -22.0 kJ/mol. At infinite dilution the binding is dominated by
+UFF dispersion in the channel, not by the OH electrostatics (see the Henry section).
+
+
 **The phase is identified by its cell, not by a CSD refcode** (decision of 2026-09-19).
 The accepted phase is MIL-53(Al) lp (high-temperature, empty) from Loiseau et al.,
 Chem. Eur. J. 2004, 10, 1373: orthorhombic Imma (No. 74), a = 6.608, b = 16.675,
@@ -124,8 +186,12 @@ Other sources checked:
   The Cr LJ parameters (eps 1.297 kJ/mol = 156.0 K, sigma 3.911 A) equal DREIDING's
   **Al** values. Guests: CO2 (q_C +0.6512, C=O 1.162 A, harmonic bend) and N2.
   **No Al structure and no lp geometry usable for us** (Cr, and no coordinates).
+  **Worth knowing before meeting A. Ghoufi:** his MIL-53(Cr) force field uses the
+  **DREIDING Al** Lennard-Jones parameters for Cr, and a CO2 model with
+  **q_C = +0.6512**, the same charge as RASPA's built-in `ExampleDefinitions/CO2.def`
+  (Garcia-Sanchez type), **not TraPPE** (q_C = +0.70), which is what we use.
 
-**Caveats on candidate 1** (to decide, not to fix silently):
+**Caveats on candidate 1**, all RESOLVED 2026-09-19 (see the Structure section above): (1) option (b) chosen, (2) header commented out in a copy, (3) O-H kept and recorded as a systematic:
 1. **Setting.** Primitive 38-atom cell. Options: (a) use it **as-is** (RASPA
    handles triclinic cells; replication 5 x 3 x 3 = 45 primitive = 22.5
    conventional cells, about 1.4x the cost), or (b) an **exact change of basis** to the
@@ -222,30 +288,48 @@ theta_He is **method-dependent**, so it is recorded with its parameters:
   greyed out, labelled "not compared". The figure caption states the restriction.
 - Temperature: reference at 304 K, simulation at 303 K. The 1 K offset is noted and
   not corrected.
-- **OPEN, convention of the Bourrelly points:** the CSV is declared "absolute, mmol/g".
-  Bourrelly 2005 is an experimental (manometric) study, and such data are usually
-  **excess**. At 304 K and 30 bar, excess and absolute differ by roughly
-  rho_bulk x V_pore ~ 0.8 mmol/g (bulk CO2 ~ 60 kg/m^3, pore volume ~ 0.55 cm^3/g),
-  about 8 % of the loading. Need confirmation that the paper itself reports absolute
-  amounts (and, if so, with which pore volume). Otherwise the points are compared with
-  our **excess** column.
+- **Convention of the Bourrelly points (corrected 2026-09-19): EXCESS, assumed.**
+  Bourrelly 2005 reports n^a from **manometry**, which measures excess, and states
+  no conversion to absolute amounts. The CSV says: "excess (assumed; source reports
+  n^a from manometry, convention not stated)". Therefore:
+  - **The primary comparison is our EXCESS isotherm** vs the points (P >= 9 bar).
+  - Our **absolute** isotherm is drawn as a **shaded band** (from excess to absolute)
+    so the systematic between the two conventions stays visible, about 0.8 mmol/g
+    (~8 %) at 30 bar. It uses **our** theta_He, never a number from the source.
+  - The reference points are **never converted**.
+  - Caption and NOTES state this.
+- **Units:** every loading is reported in **mol/kg and molecules per conventional
+  unit cell** (Al4(OH)4(bdc)4, 832.4 g/mol; 1 molecule/uc = 1.2013 mol/kg), both in
+  the CSV and on the figure's second y-axis. The reference CSV carries both columns,
+  consistent with 832.4 g/mol (5.30 mmol/g <-> 4.41/uc). Order-of-magnitude sanity
+  check (different metal, not a validation): Ghoufi & Maurin 2010, MIL-53(Cr), report
+  3.0 CO2/uc at 4.7 bar in the np form and a rigid-lp isotherm reaching roughly 7-8
+  CO2/uc by 15 bar. If our Al lp result came out at ~2 or ~20 CO2/uc, something
+  would be wrong.
 
-### Low-pressure test: Henry constant vs Coudert's K_lp (Phase 3)
+### Low-pressure test: Henry constant vs Coudert's K_lp (Phase 3; approved 2026-09-19)
 Target: K_lp ~ 2.6e-5 mol kg^-1 Pa^-1 (Coudert 2008, Langmuir fit, no error bar).
-Plan:
-1. Weighted linear fit through the origin, n_abs = K_H p, over the lowest pressures
-   where the isotherm is still linear. A point is accepted into the fit only if
-   K_H p / n_sat < ~5 %, checked a posteriori. With K_lp, 0.1 bar gives
-   ~0.26 mol/kg, about 3 % of saturation, so 0.1 and 0.5 bar will be tested for
-   linearity. Weights 1/sem^2, uncertainty from the fit covariance.
-2. Cross-check: K_H = q_sat * b from a single-site Langmuir fit to the whole computed
-   isotherm (the same functional form Coudert used), uncertainty from the covariance.
-3. (Proposal, not yet approved) An independent Widom test-particle run gives the
-   Henry coefficient directly (RASPA prints it in mol/kg/Pa); it costs a few minutes.
-   Would need your go-ahead.
-If the grid is too coarse at low pressure (curvature already at 0.1 bar), adding
-0.01-0.05 bar points is proposed rather than extrapolated silently.
+Three independent numbers are reported side by side:
+1. **Weighted linear fit through zero**, n_abs = K_H p, over the lowest pressures that
+   are still linear (weights 1/sem^2, uncertainty from the covariance). If the 0.1 bar
+   point already shows curvature, **ask before adding lower pressures**.
+2. **Langmuir fit** of the whole computed isotherm, K = q_sat b (the same functional
+   form Coudert used), uncertainty from the covariance.
+3. **Direct Widom test-particle insertion** of CO2 in the empty rigid framework
+   (`runs/henry_widom_CO2`, 20,000 cycles, same force field, charges, Ewald and T).
 
+**Caution on comparing them.** (1) and (3) estimate the true zero-loading Henry
+constant. (2) and Coudert's K_lp are Langmuir parameters, i.e. an effective slope of
+a fit over the whole isotherm. On an energetically heterogeneous surface the true
+Henry constant exceeds the Langmuir K. So the like-for-like comparison with Coudert
+is (2), and (1)/(3) vs (2) measures how non-Langmuir our isotherm is.
+
+**First result (500-cycle test, 303 K): K_H(Widom) = 1.91e-4 +/- 0.11e-4
+mol/kg/Pa, about 7x Coudert's K_lp.** With the framework charges off, 1.66e-4, so
+the difference is mostly UFF dispersion, not the mu-OH electrostatics.
+<U_gh> - <U_h> = -22.9 kJ/mol. The full run and the isotherm-based numbers (1, 2) will
+show whether this is a strong-site Henry regime (large K_H, smaller Langmuir K) or a
+real over-binding of the force field.
 
 ### Resume logic
 `run_isotherm.sh` skips a point whose output contains "Simulation finished". An

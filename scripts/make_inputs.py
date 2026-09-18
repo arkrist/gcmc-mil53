@@ -18,6 +18,7 @@ Usage:
          [--tag production] [--cycles 50000 --init 10000] [--pressures 1e4 5e4 ...]
   python scripts/make_inputs.py --cif ... --replication-only     # just print the replication
   python scripts/make_inputs.py --cif ... --helium-run [--cycles 500000]   # runs/helium_void_fraction/
+  python scripts/make_inputs.py --cif ... --widom-run  [--cycles 50000]    # runs/henry_widom_CO2/
 """
 import argparse
 import math
@@ -83,6 +84,8 @@ def main(argv=None):
     ap.add_argument("--replication-only", action="store_true")
     ap.add_argument("--helium-run", action="store_true",
                     help="write runs/helium_void_fraction/ (Widom He insertion, 298 K) instead of the isotherm")
+    ap.add_argument("--widom-run", action="store_true",
+                    help="write runs/henry_widom_CO2/ (Widom CO2 insertion, Henry coefficient) instead of the isotherm")
     args = ap.parse_args(argv)
 
     cif = Path(args.cif)
@@ -100,6 +103,18 @@ def main(argv=None):
         cycles = args.cycles if args.cycles != 50000 else 500000  # RASPA example default for He
         (d / "simulation.input").write_text(tmpl.format(cycles=cycles, framework=cif.stem, cutoff=R_CUT,
                                                         unit_cells=" ".join(map(str, n))))
+        shutil.copy(cif, d / cif.name)
+        for f in FF_FILES:
+            shutil.copy(ROOT / "forcefield" / f, d / f)
+        print(f"wrote {d.relative_to(ROOT)}")
+        return 0
+    if args.widom_run:
+        d = ROOT / "runs" / "henry_widom_CO2"
+        d.mkdir(parents=True, exist_ok=True)
+        tmpl = (ROOT / "templates" / "henry_widom.input.template").read_text()
+        (d / "simulation.input").write_text(tmpl.format(
+            cycles=args.cycles, framework=cif.stem, cutoff=R_CUT, temperature=args.temperature,
+            unit_cells=" ".join(map(str, n))))
         shutil.copy(cif, d / cif.name)
         for f in FF_FILES:
             shutil.copy(ROOT / "forcefield" / f, d / f)

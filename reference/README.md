@@ -2,7 +2,13 @@
 
 One CSV per source, digitised by hand. **Never add invented points.**
 
-Required columns:
+The file supplied by the project owner (`bourrelly2005_MIL53Al_CO2_304K.csv`) uses
+these columns, which are the schema from now on:
+`source, system, adsorbate, T_K, convention, pressure_bar, loading_mmol_per_g,
+loading_molec_per_uc, notes`. `loading_molec_per_uc` is per **conventional** cell
+(832.4 g/mol). The earlier generic schema below is kept for other sources.
+
+Generic schema (earlier):
 
 | column | meaning |
 |---|---|
