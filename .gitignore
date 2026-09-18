@@ -1,0 +1,13 @@
+# RASPA run directories are large; keep inputs, not raw outputs
+runs/**/Movies/
+runs/**/VTK/
+runs/**/Restart/
+runs/**/CrashRestart/
+runs/**/RestartInitial/
+examples/**/Movies/
+examples/**/VTK/
+examples/**/Restart/
+examples/**/CrashRestart/
+examples/**/RestartInitial/
+__pycache__/
+.DS_Store

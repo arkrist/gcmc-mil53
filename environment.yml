@@ -1,0 +1,11 @@
+# Conda environment for the MIL-53(Al) CO2 GCMC project.
+# Create with:  micromamba env create -f environment.yml   (or conda/mamba)
+name: gcmc-mil53
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - raspa2=2.0.50      # native osx-arm64 build on conda-forge
+  - numpy
+  - pandas
+  - matplotlib
