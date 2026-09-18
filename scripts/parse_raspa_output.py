@@ -53,6 +53,9 @@ def parse_conditions(text):
         "cycles_init": _first(r"Number of initializing cycles:\s*(\d+)", text, int),
         "cycles_prod": _first(r"^Number of cycles:\s*(\d+)", text, int),
         "finished": "Simulation finished" in text,
+        "n_warnings": _first(r"Simulation finished,\s*(\d+) warnings", text, int),
+        # RASPA silently zeroes LJ pairs it has no parameters for -- flag it
+        "missing_vdw_pairs": "NO VDW INTERACTION" in text,
     }
 
 

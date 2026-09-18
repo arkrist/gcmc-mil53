@@ -11,3 +11,5 @@ examples/**/CrashRestart/
 examples/**/RestartInitial/
 __pycache__/
 .DS_Store
+examples/**/EnergyHistograms/
+examples/**/NumberOfMoleculesHistograms/

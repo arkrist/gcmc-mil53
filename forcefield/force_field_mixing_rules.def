@@ -1,0 +1,16 @@
+# general rule for shifted vs truncated
+truncated
+# general rule tailcorrections
+yes
+# number of defined interactions
+7
+# type interaction, parameters (epsilon/kB [K], sigma [A])
+Al             lennard-jones   254.126    4.0082      // UFF, Rappe et al., JACS 1992, 114, 10024 (D=0.505 kcal/mol, x=4.499 A)
+O              lennard-jones    30.193    3.1181      // UFF (D=0.060, x=3.500)
+C              lennard-jones    52.838    3.4309      // UFF (D=0.105, x=3.851)
+H              lennard-jones    22.142    2.5711      // UFF (D=0.044, x=2.886)
+C_co2          lennard-jones    27.0      2.80        // TraPPE, Potoff & Siepmann, AIChE J. 2001, 47, 1676
+O_co2          lennard-jones    79.0      3.05        // TraPPE
+He             lennard-jones    10.9      2.64        // helium probe for the void fraction (standard RASPA value)
+# general mixing rule for Lennard-Jones
+Lorentz-Berthelot
