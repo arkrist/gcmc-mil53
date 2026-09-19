@@ -363,6 +363,38 @@ the difference is mostly UFF dispersion, not the mu-OH electrostatics.
 show whether this is a strong-site Henry regime (large K_H, smaller Langmuir K) or a
 real over-binding of the force field.
 
+### Timing test (2026-09-19, idle M2, sequential, `runs/timing/`)
+1000 cycles per point (500 init + 500 prod). Estimated with
+`scripts/estimate_walltime.py` (cost per cycle ~ max(20, N); production half of the
+test; see the docstring for the assumptions).
+
+| p [bar] | test [s] | N/uc at end | acc. insertion | s/cycle (prod) | full 60k cycles [h] |
+|---|---|---|---|---|---|
+| 0.1 | 38  | 2.1 | 45.8 % | 0.039 | 0.6 (lower bound, N still rising) |
+| 0.5 | 124 | 5.4 | 18.2 % | 0.131 | 2.2 |
+| 1   | 160 | 7.5 | 8.1 %  | 0.171 | 2.8 |
+| 2   | 174 | 7.6 | 4.2 %  | 0.185 | 3.1 |
+| 5   | 189 | 8.6 | 1.9 %  | 0.205 | 3.4 |
+| 10  | 194 | 9.3 | 1.3 %  | 0.208 | 3.5 |
+| 20  | 200 | 9.6 | **0.76 %** | 0.217 | 3.6 |
+| 30  | 200 | 9.4 | **0.59 %** | 0.216 | 3.6 |
+| 50  | 204 | 9.8 | **0.56 %** | 0.221 | 3.7 |
+
+**Full isotherm, sequential: ~27 h.** Four points in parallel on the four performance
+cores would take roughly 8 h wall time (to be measured, not assumed).
+
+**Acceptance flag (< 1 %): 20, 30 and 50 bar.** The lp channel is near saturation
+there (~9.5 CO2/uc), so insertions rarely find room. 50,000 cycles x ~150
+molecules x 40 % swaps x 0.6 % still gives ~2e4 accepted exchanges per point,
+probably enough, but it will be checked with the loading-vs-cycle traces in Phase 3.
+Remedies if needed: more CBMC trial positions, or CFCMC.
+
+**Loadings after 1000 cycles are NOT results** (not equilibrated or converged at low
+p; 500 production cycles). Order of magnitude only: ~7 CO2/uc at 1 bar, ~9.3 at
+10 bar, ~9.6 at 50 bar. This is the same order as Ghoufi & Maurin's rigid-lp Cr
+value (7-8/uc by 15 bar), not 2 or 20. The early plateau is consistent with the
+large Widom K_H.
+
 ### Resume logic
 `run_isotherm.sh` skips a point whose output contains "Simulation finished". An
 unfinished point is rerun from scratch; its partial output is kept as
