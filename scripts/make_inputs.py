@@ -77,7 +77,7 @@ def main(argv=None):
     ap.add_argument("--cycles", type=int, default=50000)
     ap.add_argument("--init", type=int, default=10000)
     ap.add_argument("--print-every", type=int, default=500)
-    ap.add_argument("--temperature", type=float, default=303.0)
+    ap.add_argument("--temperature", type=float, default=304.0)  # Bourrelly 2005 and Coudert 2008 are at 304 K
     ap.add_argument("--pressures", type=float, nargs="+", default=PRESSURES_PA)
     ap.add_argument("--no-cif-charges", action="store_true",
                     help="do not read _atom_site_charge (only after an explicit decision, see NOTES.md)")

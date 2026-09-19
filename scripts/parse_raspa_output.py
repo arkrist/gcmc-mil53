@@ -4,8 +4,9 @@
 Extracts, per adsorbed component:
   * absolute and excess loading in molecules/unit cell and mol/kg framework,
     each with RASPA's block-average error bar;
-  * acceptance rates of the swap insertion, swap deletion, reinsertion,
-    translation and rotation moves;
+  * acceptance rates AND accepted counts of the swap insertion, swap deletion and
+    reinsertion moves (the count is what the sampling quality depends on), plus
+    translation and rotation acceptance rates;
   * the run conditions (T, p, fugacity coefficient, unit cells, framework mass).
 It also exposes `loading_trace()` (instantaneous N vs cycle from the periodic
 status prints) for convergence plots.
@@ -118,6 +119,8 @@ def parse_acceptance(text):
             tried, acc = float(m.group(2)), float(m.group(3))
             put(m.group(1), key, acc / tried if tried > 0 else float("nan"))
             put(m.group(1), key.replace("acc_", "tried_"), tried)
+            # the accepted COUNT is what the statistics depend on, not the rate
+            put(m.group(1), key.replace("acc_", "accepted_"), acc)
 
     # Translation / rotation: per-direction totals and successes -> overall ratio
     for header, key in (("translation", "acc_translation"), ("rotation", "acc_rotation")):
@@ -176,7 +179,7 @@ def main(argv=None):
     df = pd.concat([parse_file(f) for f in args.files], ignore_index=True)
     if args.csv:
         df.to_csv(args.csv, index=False)
-    cols = ["framework", "molecule", "T_K", "p_Pa", "fugacity_coeff",
+    cols = ["framework", "molecule", "T_K", "p_Pa", "fugacity_coeff", "accepted_insertion", "accepted_deletion",
             "absolute_molec_uc", "absolute_molec_uc_err95", "absolute_mol_kg", "absolute_mol_kg_err95",
             "excess_mol_kg", "excess_mol_kg_err95", "acc_insertion", "acc_deletion", "acc_reinsertion",
             "acc_translation", "acc_rotation", "finished"]

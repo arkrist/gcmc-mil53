@@ -275,6 +275,13 @@ cell this gives:
 So the box is **4 x 2 x 2 = 16 cells**, 1216 framework atoms. It is recomputed
 from the actual CIF, whose axes may be permuted.
 
+### Temperature: 304 K (changed from 303 K on 2026-09-20)
+Bourrelly 2005 measured at 304 K and Coudert 2008 analyses at 304 K. Everything --
+the isotherm and the direct-insertion Henry run -- is at **304 K**, so no avoidable
+mismatch is carried. (The helium void fraction stays at its conventional 298 K; it
+is a property of the empty framework and the probe, not of the adsorption
+temperature.)
+
 ### Moves and run length
 Translation : rotation : reinsertion : swap = 0.5 : 0.5 : 0.5 : 1.0, so 20/20/20/40 %
 of the moves. Swap (insertion/deletion, CBMC with 10 trial positions) is what
@@ -337,31 +344,78 @@ theta_He is **method-dependent**, so it is recorded with its parameters:
   CO2/uc by 15 bar. If our Al lp result came out at ~2 or ~20 CO2/uc, something
   would be wrong.
 
-### Low-pressure test: Henry constant vs Coudert's K_lp (Phase 3; approved 2026-09-19)
-Target: K_lp ~ 2.6e-5 mol kg^-1 Pa^-1 (Coudert 2008, Langmuir fit, no error bar).
-Three independent numbers are reported side by side:
-1. **Weighted linear fit through zero**, n_abs = K_H p, over the lowest pressures that
-   are still linear (weights 1/sem^2, uncertainty from the covariance). If the 0.1 bar
-   point already shows curvature, **ask before adding lower pressures**.
-2. **Langmuir fit** of the whole computed isotherm, K = q_sat b (the same functional
-   form Coudert used), uncertainty from the covariance.
-3. **Direct Widom test-particle insertion** of CO2 in the empty rigid framework
-   (`runs/henry_widom_CO2`, 20,000 cycles, same force field, charges, Ewald and T).
+### What every result carries (CSV and figures)
+- **Both conventions, always**: absolute AND excess loading, each with its 95 % error
+  bar, in **mol/kg AND molecules per conventional unit cell** (832.4 g/mol;
+  1 molecule/uc = 1.2013 mol/kg). The figure carries a second y-axis for molecules/uc.
+- **theta_He = 0.7115 (Widom He, 298 K, eps/k 10.9 K, sigma 2.64 A) is stated on the
+  figure and in the CSV header**, because excess depends on it.
+- The absolute-excess difference (~11 % at 30 bar) is drawn as a **shaded band
+  between the two curves**, not buried in a column: the reference points are excess
+  (assumed), so the band shows what the convention choice is worth.
+- **Per point, the number of ACCEPTED insertions and deletions** (not only the
+  acceptance rate), since that count is what the statistics depend on. Rates below
+  1 % are flagged, with their counts beside them.
+- **Relative error on loading per point**: err95/loading. At the three low pressures
+  (0.01, 0.02, 0.05 bar) this is reported explicitly; **if it exceeds 10 % at
+  0.01 bar, that is stated and the point is drawn as an open symbol with its error
+  bar**, not plotted as if it were solid.
 
-**Caution on comparing them.** (1) and (3) estimate the true zero-loading Henry
-constant. (2) and Coudert's K_lp are Langmuir parameters, i.e. an effective slope of
-a fit over the whole isotherm. On an energetically heterogeneous surface the true
-Henry constant exceeds the Langmuir K. So the like-for-like comparison with Coudert
-is (2), and (1)/(3) vs (2) measures how non-Langmuir our isotherm is.
+### Low-pressure comparison, REFRAMED 2026-09-20
+**Coudert's K_lp = 2.6e-5 mol kg^-1 Pa^-1 is not a Henry constant.** It is the
+initial slope of a **Langmuir function fitted to the 9-30 bar branch** of the
+experimental isotherm and extrapolated back to zero pressure. Comparing our
+directly computed K_H against it is not like-for-like, and the factor 7.4 seen in
+Phase 2 is partly an artefact of that extrapolation. Phase 3 therefore does this:
 
-**Result (3), final, `runs/henry_widom_CO2`, 20,000 cycles, 303 K: K_H(Widom) =
-1.933e-4 +/- 0.007e-4 mol/kg/Pa** (95 % CI; blocks 1.924-1.937e-4),
-<U_gh> - <U_h> = -22.85 +/- 0.03 kJ/mol, **7.4x Coudert's K_lp**. (500-cycle test:
-1.91e-4 +/- 0.11e-4.) With the framework charges off, 1.66e-4, so
-the difference is mostly UFF dispersion, not the mu-OH electrostatics.
-<U_gh> - <U_h> = -22.9 kJ/mol. The full run and the isotherm-based numbers (1, 2) will
-show whether this is a strong-site Henry regime (large K_H, smaller Langmuir K) or a
-real over-binding of the force field.
+1. **Fit a Langmuir isotherm to the digitised experimental points with P >= 9 bar**
+   (`reference/bourrelly2005_MIL53Al_CO2_304K.csv`, 12 of the 13 points; the 7.37 bar
+   point is inside the step). Report K and N_max. **Validation of the procedure:**
+   if this K reproduces Coudert's 2.6e-5, our fitting procedure matches his and the
+   comparison is meaningful; if it does not, the discrepancy is in the procedure and
+   is reported as such before anything is said about the force field.
+2. **Fit the same Langmuir form to our simulated isotherm over the same window**
+   (P >= 9 bar) and compare K and N_max **pairwise** (experiment vs simulation),
+   with uncertainties from the fit covariance.
+3. **Plot three curves together**: our simulated isotherm, the experimental points
+   for P >= 9 bar, and Coudert's virtual rigid-lp Langmuir curve. **The low-pressure
+   divergence between them is the result, not a failure**: it is where the real
+   material is np and the rigid-lp model cannot follow.
+4. **The direct-insertion K_H stays a separate, clearly labelled number.** It is the
+   true zero-coverage limit **of our force field** (Widom test insertion, no fit, no
+   extrapolation) and is the right quantity to quote when discussing the force field
+   itself, never as "the Henry constant of MIL-53(Al) lp" from experiment.
+
+Values in hand: K_H(Widom, 304 K) in `runs/henry_widom_CO2/`; the 303 K run
+(1.933e-4 +/- 0.007e-4 mol/kg/Pa, <U_gh>-<U_h> = -22.85 kJ/mol) is kept in
+`runs/henry_widom_CO2_303K/` for the record. The linear fit through the origin on
+our own low-pressure points is reported too, as the sampled counterpart of K_H.
+
+### Force-field limitations
+The combination used here -- **UFF** Lennard-Jones for the framework, **DDEC**
+charges, **TraPPE** CO2, Lorentz-Berthelot -- is a **generic** combination for MOF
+screening. It was **not parameterised for MIL-53(Al)**, and nothing in it was fitted
+to CO2 adsorption in this material.
+
+What we measured (Phase 2, Widom at infinite dilution): switching the framework
+charges off changes K_H by only about 15 % (1.93e-4 -> 1.66e-4 mol/kg/Pa) and
+<U_gh>-<U_h> from -22.9 to -22.0 kJ/mol. **The high zero-coverage affinity comes from
+the Lennard-Jones term, not from the mu-OH electrostatics.**
+
+Context: the Maurin group derived **system-specific** force fields for MIL-53 rather
+than using generic ones, and Ghoufi & Maurin 2010 combined **Harris-Yung** CO2 with
+their own framework force field (32 unit cells, Ewald, van der Waals truncated at
+12 A, 300 K). Our generic parameters are a deliberate, cheaper choice, and its
+consequences must be stated with the result.
+
+**Expected signature.** Bourrelly 2005 finds that CO2 sorbs first onto the hydroxyl
+groups (0.75 CO2 per structural OH before the step), so the **mu-OH is the key
+adsorption site** in this material. If our simulated isotherm overestimates
+low-pressure uptake relative to the virtual rigid-lp curve, that is exactly the
+expected signature of a generic force field in a material whose key site is the
+mu-OH group -- reinforced by the short published O-H distance (0.86 A) kept for
+consistency with the DDEC charges. This is a statement about the model, not a bug to
+be tuned away: no parameter will be adjusted to improve the agreement.
 
 ### Timing test (2026-09-19, idle M2, sequential, `runs/timing/`)
 1000 cycles per point (500 init + 500 prod). Estimated with
