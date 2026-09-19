@@ -386,7 +386,23 @@ Phase 2 is partly an artefact of that extrapolation. Phase 3 therefore does this
    extrapolation) and is the right quantity to quote when discussing the force field
    itself, never as "the Henry constant of MIL-53(Al) lp" from experiment.
 
-Values in hand: K_H(Widom, 304 K) in `runs/henry_widom_CO2/`; the 303 K run
+**Values in hand.**
+- **K_H(Widom, 304 K) = 1.869e-4 +/- 0.016e-4 mol/kg/Pa**, <U_gh>-<U_h> = -22.84 +/-
+  0.04 kJ/mol (`runs/henry_widom_CO2/`, 20,000 cycles, 1166 s). This is the true
+  zero-coverage limit **of our force field**, no fit, no extrapolation.
+- **Langmuir fit to the digitised experimental points, P >= 9 bar (procedure
+  validation, step 1): K = 2.606e-5 +/- 0.060e-5 mol/kg/Pa vs Coudert's 2.6e-5,
+  ratio 1.00** (N_max = 12.18 +/- 0.07 mol/kg = 10.14 molec/uc, b = 0.214 +/- 0.006
+  bar^-1, chi2_red = 0.49, 12 points). The digitisation and the fitting procedure
+  therefore reproduce Coudert's published number, and the pairwise comparison is
+  meaningful. It also means this fitted curve *is* his virtual rigid-lp Langmuir
+  curve, so his N_max is not needed to draw it.
+- Ratio K_H(Widom, force field) / K(Langmuir, experimental lp branch) = **7.2**. The
+  two are different quantities (zero-coverage limit vs fitted initial slope over
+  9-30 bar); the pairwise Langmuir-vs-Langmuir comparison is the one that tests the
+  force field, and it comes with the isotherm.
+
+The 303 K run
 (1.933e-4 +/- 0.007e-4 mol/kg/Pa, <U_gh>-<U_h> = -22.85 kJ/mol) is kept in
 `runs/henry_widom_CO2_303K/` for the record. The linear fit through the origin on
 our own low-pressure points is reported too, as the sampled counterpart of K_H.
