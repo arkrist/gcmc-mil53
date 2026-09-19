@@ -68,7 +68,27 @@ test is therefore made on the absolute loading.
   | 100 | 2.863 +/- 0.042   | 2.898 +/- 0.033   | -0.034  | 0.053  | 29.9 % / 29.9 % |
 
   Wall time on the M2: 413 s for both points (reference: 691 s).
-- Cu-BTC CO2: running (reference took 3.3 h).
+- Cu-BTC CO2, 323 K, 1 MPa: **PASS 1/1** (`results/sanity_cubtc_co2.{csv,png}`)
+
+  | quantity | ours | reference |
+  |---|---|---|
+  | absolute loading [molec/uc] | 113.40 +/- 0.80 | 113.68 +/- 0.34 |
+  | absolute loading [mol/kg] | 11.717 +/- 0.082 | 11.747 +/- 0.035 |
+  | delta / tolerance | -0.29 / 0.87 molec/uc | |
+  | acceptance: insertion / deletion / reinsertion | 21.9 / 21.9 / 8.6 % | 21.7 / 21.8 / 8.5 % |
+  | acceptance: translation / rotation | 49.8 / 49.8 % | 51.5 / 50.8 % |
+
+  Equilibration: N ~ 116 molecules already at init cycle 5000 of 25,000; production
+  fluctuates between 97 and 116. Wall time on the M2: 9450 s (reference: 11,838 s),
+  run partly alongside other jobs.
+  This passes the chain MIL-53 needs: rigid 3-site charged CO2, framework charges
+  from the CIF, Ewald, rotation moves.
+
+  **Do not reuse this example's excess loading.** Its input hard-codes
+  `HeliumVoidFraction 0.29`, which appears to be a copied placeholder: a Widom-He
+  value for Cu-BTC is far larger. RASPA uses it silently to compute excess = absolute
+  - rho_bulk * theta_He * V, so the example's "excess" number (11.59 mol/kg here)
+  is not physical. For our system theta_He is computed, not assumed (0.7115, Phase 2).
 
 ---
 
