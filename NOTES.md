@@ -262,7 +262,7 @@ equilibrates N, so it gets the largest share. Reinsertion moves a molecule to a
 random position, which helps it leave a pore. 10,000 initialization cycles,
 50,000 production cycles. One RASPA cycle = max(20, N) moves.
 
-### Excess loading and helium void fraction (method decided 2026-09-19; value pending the CIF)
+### Excess loading and helium void fraction (DONE 2026-09-19)
 Excess = absolute - rho_bulk(PR) * V_pore, with V_pore = theta_He x cell volume.
 theta_He is **method-dependent**, so it is recorded with its parameters:
 
@@ -271,7 +271,14 @@ theta_He is **method-dependent**, so it is recorded with its parameters:
 - probe: single LJ site, eps/kB = **10.9 K**, sigma = **2.64 A**, no charge
 - framework: the same UFF LJ parameters as the CO2 runs, Lorentz-Berthelot, r_c = 12.0 A,
   truncated with tail corrections, no electrostatics
-- **theta_He = (to fill in after the run) +/- (95 % CI)**
+- structure: `structures/MIL-53_Al_lp.cif`, 4 x 2 x 2 cells, `runs/helium_void_fraction/` (2791 s)
+- **theta_He = 0.7115 +/- 0.0004** (95 % CI; blocks 0.7111-0.7118)
+- The corresponding pore volume is theta_He x V_uc / m_uc = 0.7115 x 1411.96 A^3 / 832.415 g/mol
+  = **0.727 cm^3/g**.
+- This is **not** the geometric void fraction. CoRE 2024 lists AV_VF = 0.587 for
+  SABVUN (probe-accessible volume). The Widom value <exp(-beta U)> gives weights > 1
+  to weakly attractive regions near the walls, so it is larger. This definitional
+  gap is why the method and probe are stated whenever the value is quoted.
 
 ### Comparison with the literature (rule)
 - **Absolute is compared with absolute and excess with excess.** Wherever a
@@ -294,8 +301,11 @@ theta_He is **method-dependent**, so it is recorded with its parameters:
   n^a from manometry, convention not stated)". Therefore:
   - **The primary comparison is our EXCESS isotherm** vs the points (P >= 9 bar).
   - Our **absolute** isotherm is drawn as a **shaded band** (from excess to absolute)
-    so the systematic between the two conventions stays visible, about 0.8 mmol/g
-    (~8 %) at 30 bar. It uses **our** theta_He, never a number from the source.
+    so the systematic between the two conventions stays visible. With our theta_He
+    (V_pore = 0.727 cm^3/g) and rho_bulk ~ 67 kg/m^3 (CO2, 303 K, 30 bar), it is about
+    **1.1 mmol/g (~11 %) at 30 bar**. The earlier 0.8 mmol/g / 8 % figure assumed
+    V_pore ~ 0.55 cm^3/g and is superseded. It uses **our** theta_He, never a number
+    from the source; RASPA's exact PR-based value is in the results CSV.
   - The reference points are **never converted**.
   - Caption and NOTES state this.
 - **Units:** every loading is reported in **mol/kg and molecules per conventional
