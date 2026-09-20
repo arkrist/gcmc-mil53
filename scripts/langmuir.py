@@ -176,9 +176,9 @@ def main(argv=None):
         ax.errorbar(g.pressure_bar, g.loading_mmol_per_g, **{**REF, "color": "#8c8c88", "ms": 7},
                     label="same, inside the np-lp step: NOT compared")
     ax.plot(pp, fe["N_max"] * fe["b_per_bar"] * pp / (1 + fe["b_per_bar"] * pp), color=REF["color"], lw=1.2, ls="--",
-            label="Langmuir fit to the experimental lp branch")
+            label="Langmuir fit to the experimental lp branch\n= Coudert's virtual rigid-lp curve (K matches to 1.00)")
     ax.plot(pp, K_LP_COUDERT * 1e5 * pp, color=EXTRA[0], lw=1.6,
-            label="Coudert 2008 $K_{lp}$ initial slope (2.6e-5 mol/kg/Pa)")
+            label="Coudert 2008 $K_{lp}$: initial slope only (tangent at p $\\to$ 0)")
     ax.set_xscale("log")
     ax.set_ylim(0, max(sim[col].max(), e.loading_mmol_per_g.max()) * 1.25)
     ax.set_xlabel("Pressure [bar]")
@@ -189,9 +189,11 @@ def main(argv=None):
     ax.legend(fontsize=8, loc="lower right")
     fig.text(0.01, -0.06,
              "Coudert's $K_{lp}$ is the initial slope of a Langmuir fit to the 9-30 bar experimental branch, not a Henry "
-             "constant;\nonly its slope is drawn (his $N_{max}$ is not in hand). The low-pressure divergence is the result: "
-             "there the real\nmaterial is np, which a rigid-lp model cannot follow. Simulation error bars: 95 % CI; "
-             "experimental: digitisation.",
+             "constant.\nOur fit to the same points returns K = 2.606e-5 vs his 2.6e-5 (ratio 1.00), so the dashed orange curve "
+             "is his virtual\nrigid-lp curve; the green line is only its tangent at p -> 0. The low-pressure divergence is the "
+             "result: there the real\nmaterial is np, which a rigid-lp model cannot follow, and our points also lie above our own "
+             "Langmuir fit, i.e. the\nsimulated isotherm is more heterogeneous than a single-site Langmuir. Error bars: 95 % CI "
+             "(simulation), digitisation (experiment).",
              fontsize=7.5, va="top")
     fig.savefig(ROOT / "results" / "langmuir_lp_branch.png")
     print("\nwrote results/langmuir_fits.csv and results/langmuir_lp_branch.png")
