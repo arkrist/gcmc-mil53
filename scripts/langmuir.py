@@ -50,6 +50,10 @@ def fit_langmuir(p_bar, n, sigma):
         f = b * p / (1 + b * p)
         return float(np.sum(w * (n - nmax_at(b) * f) ** 2))
 
+    # A Langmuir is monotonically increasing and concave: refuse data that is not.
+    order = np.argsort(p)
+    n_sorted = n[order]
+    monotonic = bool(np.all(np.diff(n_sorted) > -3 * np.asarray(sigma, float)[order][1:]))
     grid = np.logspace(-4, 3, 4000)                     # b in 1/bar
     b = grid[int(np.argmin([chi2(x) for x in grid]))]
     lo, hi = b / 3, b * 3                               # golden-section refinement
@@ -79,7 +83,10 @@ def fit_langmuir(p_bar, n, sigma):
     dN, db = np.sqrt(np.diag(cov))
     K = nmax * b                                         # mol/kg/bar
     dK = np.sqrt((b * dN) ** 2 + (nmax * db) ** 2 + 2 * b * nmax * cov[0, 1])
-    return {"N_max": nmax, "N_max_err": dN, "b_per_bar": b, "b_err": db,
+    at_bound = b > 0.5 * grid[-1] or b < 2 * grid[0]
+    return {"ok": bool(monotonic and not at_bound and dK < abs(K)),
+            "monotonic": monotonic, "b_at_bound": bool(at_bound),
+            "N_max": nmax, "N_max_err": dN, "b_per_bar": b, "b_err": db,
             "K_mol_kg_bar": K, "K_err_mol_kg_bar": dK,
             "K_mol_kg_Pa": K * 1e-5, "K_err_mol_kg_Pa": dK * 1e-5,
             "chi2_red": chi2_red, "n_points": len(p)}
@@ -87,6 +94,19 @@ def fit_langmuir(p_bar, n, sigma):
 
 def show(name, f):
     print(f"{name}:")
+    if not f["ok"]:
+        why = []
+        if not f["monotonic"]:
+            why.append("the data are NOT monotonically increasing over the window "
+                       "(excess loading passes through a maximum), which a Langmuir function cannot represent")
+        if f["b_at_bound"]:
+            why.append("the fitted b ran to the edge of the search grid")
+        if f["K_err_mol_kg_bar"] >= abs(f["K_mol_kg_bar"]):
+            why.append("the uncertainty on K exceeds K itself")
+        print("    FIT REFUSED: " + "; ".join(why))
+        print(f"    (degenerate values, do not use: N_max = {f['N_max']:.3f}, b = {f['b_per_bar']:.4g}, "
+              f"K = {f['K_mol_kg_Pa']:.3g} mol/kg/Pa)")
+        return
     print(f"    N_max = {f['N_max']:.3f} +/- {f['N_max_err']:.3f} mol/kg "
           f"({f['N_max'] / MOLKG_PER_UC:.3f} +/- {f['N_max_err'] / MOLKG_PER_UC:.3f} molecules/uc)")
     print(f"    b     = {f['b_per_bar']:.4f} +/- {f['b_err']:.4f} bar^-1")
@@ -129,6 +149,12 @@ def main(argv=None):
     fs = fit_langmuir(s.p_bar, s[col], s[err] / 2.776)     # sem, not the 95 % half-width
     print()
     show(f"(2) SIMULATION  this work, {a.column}, {len(s)} points", fs)
+    if not fs["ok"]:
+        print("\n(3) PAIRWISE: NOT DONE -- the simulated fit was refused (see above). "
+              "Decision required before comparing conventions (see NOTES.md).")
+        pd.DataFrame([{"fit": "experiment_Bourrelly2005", **fe}, {"fit": f"simulation_{a.column}", **fs}]).to_csv(
+            ROOT / "results" / "langmuir_fits.csv", index=False)
+        return 0
     print("\n(3) PAIRWISE, same window, same functional form, same fitting procedure:")
     print(f"    N_max  sim / exp = {fs['N_max'] / fe['N_max']:.3f}"
           f"   ({fs['N_max']:.2f} vs {fe['N_max']:.2f} mol/kg)")

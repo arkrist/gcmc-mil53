@@ -473,6 +473,79 @@ uninterrupted run.
 
 ---
 
+## Phase 3 results (2026-09-20)
+
+### The run
+12 points, 304 K, 0.01-50 bar, `runs/production/`, driver with 4 concurrent jobs:
+**batch wall time 43,677 s = 12.1 h** (44.6 h of CPU). All 12 finished, none failed,
+no missing-VDW warnings. The 1000-cycle extrapolation had predicted ~8 h: it is
+**~50 % low**, as its docstring warns, because the cost per move grows with loading
+and four concurrent jobs share memory bandwidth. Use it as a lower bound.
+
+### Convergence
+- Relative error on absolute loading: **0.3-1.6 % at every point**, including 1.05 %
+  at 0.01 bar (200,000 production cycles there, 10x the rest). No point needed the
+  "> 10 %, draw as open symbol" treatment.
+- Loading vs cycle (`results/convergence_loading_vs_cycle.png`): at 50 bar the box
+  fills within ~2000 cycles and then fluctuates by +/- 0.3 molecules/uc around
+  9.99; at 0.1 bar around 1.69; at 0.01 bar the instantaneous count swings between 0
+  and 0.5 molecules/uc (2.5 molecules in the box), which the long run averages to
+  1 %. Initialisation (10,000 / 20,000 cycles) is amply long everywhere.
+- **Insertion acceptance below 1 % at 20, 30 and 50 bar** (0.67 / 0.51 / 0.37 %), as
+  the timing test predicted, but the **accepted counts** are 10,305 / 7,998 / 5,993
+  insertions (and the same number of deletions). Combined with the flat traces and
+  the 0.4-0.6 % relative errors, the sampling is adequate; no rerun is needed.
+
+### The isotherm
+`results/isotherm_MIL53_lp_CO2_304K.{csv,png}`: absolute and excess, mol/kg and
+molecules/uc, theta_He = 0.7115 stated, accepted counts and relative errors per
+point. Absolute rises from 0.19 mol/kg (0.16 molec/uc) at 0.01 bar to
+12.01 +/- 0.07 mol/kg (9.99 molec/uc) at 50 bar.
+
+**Our excess loading passes through a maximum near 20 bar** (10.66, 10.89, 10.73,
+9.93 mol/kg at 10, 20, 30, 50 bar) because the absolute isotherm saturates while
+rho_bulk * V_pore keeps growing. The experimental points still rise at 29 bar.
+
+### Langmuir comparison on the lp branch (P >= 9 bar)
+| fit | N_max [mol/kg] | b [bar^-1] | K [mol/kg/Pa] | chi2_red |
+|---|---|---|---|---|
+| **experiment** (Bourrelly, 12 pts, excess) | 12.183 +/- 0.069 | 0.2139 +/- 0.0061 | **2.606e-5 +/- 0.060e-5** | 0.49 |
+| **simulation, absolute** (4 pts) | 12.248 +/- 0.039 | 0.840 +/- 0.045 | **1.029e-4 +/- 0.052e-4** | 2.73 |
+| simulation, absolute, 9-30 bar (3 pts) | 12.21 +/- 0.03 | - | 1.069e-4 +/- 0.039e-4 | 1.0 |
+| simulation, **excess** (4 pts) | - | - | **FIT REFUSED** | - |
+
+- **Procedure validated (step 1):** our Langmuir fit to the digitised experimental
+  points reproduces Coudert's K_lp = 2.6e-5 exactly (ratio 1.00). The digitisation
+  and the fitting are sound, so the pairwise comparison is meaningful. This fitted
+  curve *is* Coudert's virtual rigid-lp curve.
+- **N_max: sim/exp = 1.005** (12.25 vs 12.18 mol/kg; 10.20 vs 10.14 molecules/uc).
+  The saturation capacity of the rigid lp framework is reproduced within 0.5 %.
+- **K: sim/exp = 3.95** (1.03e-4 vs 2.61e-5). The simulated isotherm rises much
+  faster, i.e. the generic force field over-binds at low coverage - the signature
+  anticipated in "Force-field limitations".
+- **The excess fit is refused, not fudged** (`langmuir.py` checks monotonicity, the
+  parameter bound and dK < K): a Langmuir function cannot represent a
+  non-monotonic curve. **OPEN:** the comparison above therefore puts our *absolute*
+  fit against an *excess* fit of the experiment. Options: (a) accept it with the
+  convention caveat stated, (b) fit our excess with an excess-aware form
+  (Langmuir for absolute, minus rho_bulk(p) V_pore), (c) restrict the window
+  (9-20 bar leaves only 2 simulated points: not viable).
+- Direct-insertion **K_H = 1.869e-4 +/- 0.016e-4 mol/kg/Pa** stays separate: the
+  zero-coverage limit of the force field, 7.2x the experimental Langmuir K and 1.8x
+  our own fitted Langmuir K - the gap between the last two measures how
+  non-Langmuir (energetically heterogeneous) the simulated isotherm is.
+
+### Comparison with experiment, point by point (excess, P >= 9 bar)
+| p [bar] | ours, excess [mol/kg] | Bourrelly (nearest p) |
+|---|---|---|
+| 10 | 10.66 +/- 0.06 | 8.09 at 9.46 bar |
+| 20 | 10.89 +/- 0.05 | 9.86 at 20.04 bar |
+| 30 | 10.73 +/- 0.05 | 10.51 at 29.03 bar |
+| 50 | 9.93 +/- 0.07 | (no data above 29 bar) |
+Agreement improves with pressure: ~30 % high at 10 bar, ~10 % at 20 bar, ~2 % at
+30 bar. This is consistent with over-binding at low coverage plus a correct
+saturation capacity.
+
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 
 (Sources read by the project owner on 2026-09-19: Bourrelly 2005, Coudert 2008,

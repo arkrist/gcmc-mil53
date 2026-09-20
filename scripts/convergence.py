@@ -58,7 +58,7 @@ def main(argv=None):
     fig.savefig(out / "convergence_loading_vs_cycle.png")
 
     fig2, ax = plt.subplots(figsize=(6.4, 4.2))
-    ax.plot(df.p_bar, 100 * df.acc_insertion, **{**SIM, "ms": 6})
+    ax.plot(df.p_bar, 100 * df.acc_insertion, color=SIM["color"], marker="o", ms=6, lw=2)
     ax.axhline(1.0, color="#eb6834", lw=1.4, ls="--", label="1 % flag threshold")
     for _, r in df.iterrows():
         ax.annotate(f"{r.accepted_insertion / 1000:.0f}k", (r.p_bar, 100 * r.acc_insertion),
