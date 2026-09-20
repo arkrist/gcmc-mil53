@@ -478,9 +478,16 @@ uninterrupted run.
 ### The run
 12 points, 304 K, 0.01-50 bar, `runs/production/`, driver with 4 concurrent jobs:
 **batch wall time 43,677 s = 12.1 h** (44.6 h of CPU). All 12 finished, none failed,
-no missing-VDW warnings. The 1000-cycle extrapolation had predicted ~8 h: it is
-**~50 % low**, as its docstring warns, because the cost per move grows with loading
-and four concurrent jobs share memory bandwidth. Use it as a lower bound.
+no missing-VDW warnings.
+
+**The 1000-cycle timing estimator was ~50 % low: 8 h predicted, 12.1 h actual.**
+Two reasons, both in the estimator's own docstring as assumptions: (i) it takes the
+cost per MC move as constant, whereas it grows with loading (more guest-guest pairs
+and a larger Ewald guest contribution), so the high-pressure points, which dominate
+the total, are underestimated; (ii) four concurrent jobs share memory bandwidth and
+last-level cache on the M2, so four points do not run 4x faster than one. Per-point
+comparison: 50 bar was estimated at 3.7 h and took 4.6 h. **Treat the estimate as a
+lower bound; multiply by ~1.5 for planning.**
 
 ### Convergence
 - Relative error on absolute loading: **0.3-1.6 % at every point**, including 1.05 %
@@ -523,13 +530,25 @@ rho_bulk * V_pore keeps growing. The experimental points still rise at 29 bar.
 - **K: sim/exp = 3.95** (1.03e-4 vs 2.61e-5). The simulated isotherm rises much
   faster, i.e. the generic force field over-binds at low coverage - the signature
   anticipated in "Force-field limitations".
-- **The excess fit is refused, not fudged** (`langmuir.py` checks monotonicity, the
-  parameter bound and dK < K): a Langmuir function cannot represent a
-  non-monotonic curve. **OPEN:** the comparison above therefore puts our *absolute*
-  fit against an *excess* fit of the experiment. Options: (a) accept it with the
-  convention caveat stated, (b) fit our excess with an excess-aware form
-  (Langmuir for absolute, minus rho_bulk(p) V_pore), (c) restrict the window
-  (9-20 bar leaves only 2 simulated points: not viable).
+- **The excess fit is refused, not fudged.** `langmuir.py` checks monotonicity, the
+  parameter bound and dK < K, and prints the reason instead of a number. **This is a
+  deliberate design choice** (decision of 2026-09-20): a script that says why it will
+  not fit is worth more than one that returns K = 0.32 mol/kg/Pa with an error bar
+  2400x the value, which is what the unguarded fit did here.
+- **CONVENTION MISMATCH, resolved as option (a) (decision of 2026-09-20).** The main
+  table and figures compare our **absolute** Langmuir fit with the experiment's
+  **excess** fit, and say so in the caption and in this footnote. Our own
+  absolute-excess gap is **2.8 % at 10 bar, 5.6 % at 20 bar, 8.8 % at 30 bar and
+  17.3 % at 50 bar**.
+- **(b) excess-aware fit, for robustness:** fitting
+  n_exc(p) = Langmuir_abs(p) - rho_bulk(p) V_pore / M to our excess data gives
+  **K = 1.029e-4 mol/kg/Pa, a change of -0.00 %** versus the absolute fit, and the
+  same N_max. It is identical *by construction*, not by coincidence: RASPA's
+  (absolute - excess) equals rho_bulk V_pore / M to within 1e-6 mol/kg at every
+  point (verified numerically), so adding that term back to the excess data
+  reconstructs the absolute isotherm exactly. **The conclusion K_sim/K_exp ~ 4 is
+  therefore independent of the excess/absolute convention**, which is worth saying
+  out loud -- but it is an algebraic identity, not independent evidence.
 - Direct-insertion **K_H = 1.869e-4 +/- 0.016e-4 mol/kg/Pa** stays separate: the
   zero-coverage limit of the force field, 7.2x the experimental Langmuir K and 1.8x
   our own fitted Langmuir K - the gap between the last two measures how
@@ -547,59 +566,46 @@ Agreement improves with pressure: ~30 % high at 10 bar, ~10 % at 20 bar, ~2 % at
 saturation capacity.
 
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
+(rewritten 2026-09-20 against our own numbers)
 
-(Sources read by the project owner on 2026-09-19: Bourrelly 2005, Coudert 2008,
-Ghoufi & Maurin 2010.)
+**What it reproduces.** The **saturation capacity of the open form, to 0.5 %**:
+N_max = 12.248 +/- 0.039 mol/kg (10.195 molecules/uc) from our isotherm against
+12.183 +/- 0.069 mol/kg (10.141 molecules/uc) from the experimental lp branch. The
+pore geometry of the lp structure, the charge model and the GCMC machinery are
+therefore sound: the model holds the right amount of CO2 when the channel is full.
 
-**The experiment.** Bourrelly et al., JACS 2005, 127, 13519, Fig. 2: CO2 and CH4
-isotherms at **304 K up to 30 bar** for **both** MIL-53(Al) (top panel) and
-MIL-53(Cr) (bottom panel). CO2 shows a step at **~6 bar** in both metals. The Al
-panel is our experimental reference (`reference/bourrelly2005_MIL53Al_CO2_304K.csv`,
-digitised by the project owner, not by us).
+**What it cannot do, by construction.** The np-lp step cannot appear: the cell and
+the atoms are frozen in the lp geometry, so there is no np state to go to. The
+model also says nothing about **P < 9 bar**, where the real material is np (it
+closes near 0.3 bar and reopens near 6 bar, Coudert 2008). Our isotherm is the
+**virtual rigid-lp branch** in Coudert's sense -- the loading the lp form would
+have if it stayed open -- and only its P >= 9 bar part is comparable with
+experiment.
 
-**What happens physically** (Coudert et al., JACS 2008, 130, 14294, Fig. 5b,
-arXiv:1904.09588, which analyses exactly this system). At 304 K the empty framework
-is **lp**. CO2 first **closes** it, lp -> np near **0.3 bar**, because np has the
-higher affinity (Langmuir Henry constants K_np ~ 9.0e-5 vs **K_lp ~ 2.6e-5
-mol kg^-1 Pa^-1**). CO2 then **reopens** it, np -> lp near **6 bar**, because lp has
-the larger pore volume. This is a double transition, case "c" of Coudert's
-taxonomy. The free-energy difference between the two empty structures is
-dF(lp -> np) ~ **2.5 kJ/mol per unit cell**. The predicted low-pressure transition
-at 0.3 bar was confirmed by microcalorimetry at 0.25 bar. The reopening step spans
-**5-9 bar**: np below 5 bar, fully open lp above 9 bar.
+**What remains at P >= 9 bar is a force-field effect, not a flexibility effect.**
+Over the window where the real solid is fully lp, the deviation falls
+monotonically towards 1: simulation/experiment = **1.32 at 10 bar, 1.17 at 20 bar,
+1.12 at 30 bar** on absolute loading (1.28 / 1.10 / 1.02 on excess, the reference's
+convention); see `results/deviation_vs_pressure.png`. Flexibility is not the
+explanation, because these pressures are above the reopening. The explanation is
+low-coverage over-binding by the generic force field:
+- **K_sim / K_exp = 3.95** (1.029e-4 vs 2.606e-5 mol/kg/Pa, same Langmuir form,
+  same window, same procedure), while N_max agrees to 0.5 %. The simulated isotherm
+  rises too steeply and saturates too early, then matches once the channel is full.
+- **K_H(Widom) = 1.869e-4 mol/kg/Pa is 1.8x our own fitted Langmuir K**, so the
+  simulated isotherm is more energetically heterogeneous than a single-site
+  Langmuir: a few strong sites dominate at low coverage.
+- Switching the framework charges off moves K_H by only ~15 %, so **the excess sits
+  in the Lennard-Jones term, not in the mu-OH electrostatics**.
 
-**What our simulation is.** With the lp structure held rigid, we compute the
-**"virtual" rigid-host lp isotherm**, the blue dashed curve of Coudert Fig. 5b.
-The np-lp breathing cannot appear, **by construction**: the simulation has no np
-state to go to. Consequences for the comparison:
-- It should agree with experiment **only for P >= 9 bar**, where the real solid is
-  fully lp. The comparison with the Bourrelly points is therefore restricted to
-  P >= 9 bar, and every figure caption says so.
-- Below 5 bar the real solid is np. Our lp loading there is not expected to match
-  and is not a force-field test.
-- **Quantitative low-pressure test instead:** the initial slope (Henry constant) of
-  our isotherm is compared with K_lp ~ 2.6e-5 mol kg^-1 Pa^-1 from Coudert's
-  Langmuir fit, with the uncertainty of our slope (Phase 3). This tests the
-  CO2-lp interaction where the lp assumption holds by definition. Note: Coudert
-  reports K_lp without an error bar, and it comes from a Langmuir fit, so "agreement"
-  will be judged against our own uncertainty plus a stated tolerance, not as exact.
+**What would be needed next.**
+1. A **system-specific framework force field** for MIL-53, as the Maurin group
+   derived, instead of generic UFF + DDEC + TraPPE. That addresses the
+   low-coverage over-binding, which is the deviation we actually see.
+2. A **flexible-framework treatment** to reach the transition itself: the osmotic
+   ensemble (rigid np isotherm + dF_host, Coudert 2008) or hybrid GCMC/MD
+   (Ghoufi & Maurin 2010, whose HOMC captured lp -> np at 0.35 bar but not the
+   reopening, and needed a phase-mixture model for the full isotherm).
+These are separate problems: (1) is about the interaction potential on the lp
+branch, (2) is about which structure the host adopts.
 
-**What would be needed to capture the transition.**
-1. **Osmotic ensemble** (N_host, mu_CO2, sigma, T), as in Coudert 2008. The stable
-   phase at each pressure minimises the osmotic potential, which combines, for each
-   rigid phase, dF_host(lp -> np) and the grand potential from that phase's
-   rigid-GCMC isotherm. Needed on top of this work: a rigid np isotherm plus
-   dF_host (~2.5 kJ/mol/uc). This yields the step pressures.
-2. **Hybrid GCMC/MD (HOMC) with a flexible framework**, with a force field that has
-   both np and lp minima. Ghoufi & Maurin, J. Phys. Chem. C 2010, 114, 6496
-   (DOI 10.1021/jp911484g): their HOMC scheme **captured the lp -> np transition at
-   0.35 bar but failed to capture the np -> lp reopening**, which they attributed to
-   the highly ordered orientation of CO2 in the np channels. They needed a
-   **phase-mixture model** to reproduce the full isotherm. So even a flexible
-   simulation does not trivially give the second step.
-   Their settings, useful as a sanity reference: **32 unit cells**, Ewald
-   electrostatics, van der Waals truncated at **12 A**, **Harris-Yung rigid CO2**,
-   **300 K**.
-   (For comparison, the DL_POLY `FIELD-MIL53Cr` published by A. Ghoufi, see
-   "Structure provenance", describes 2432 atoms = 32 cells x 76, with a flexible
-   framework and a CO2 model with q_C = +0.6512, i.e. not the rigid HY model of 2010.)

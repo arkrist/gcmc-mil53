@@ -32,6 +32,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from isotherm import LP_WINDOW_BAR, MOLKG_PER_UC, REF_CSV, ROOT  # noqa: E402
 from plotstyle import EXTRA, REF, SIM, plt  # noqa: E402
 
+M_CO2_KG_MOL = 0.04401
+V_PORE_CM3_G = 0.7268          # theta_He * V_uc / m_uc (see NOTES.md)
 K_LP_COUDERT = 2.6e-5   # mol/kg/Pa, Coudert 2008 Fig. 5b (Langmuir fit, no error bar given)
 K_NP_COUDERT = 9.0e-5
 
@@ -90,6 +92,20 @@ def fit_langmuir(p_bar, n, sigma):
             "K_mol_kg_bar": K, "K_err_mol_kg_bar": dK,
             "K_mol_kg_Pa": K * 1e-5, "K_err_mol_kg_Pa": dK * 1e-5,
             "chi2_red": chi2_red, "n_points": len(p)}
+
+
+def fit_excess_aware(p_bar, n_excess, sigma, rho_bulk_kg_m3):
+    """Robustness check (b): fit  n_exc(p) = Langmuir_abs(p) - rho_bulk(p) * V_pore / M.
+
+    NOTE, verified numerically on our data: RASPA's (absolute - excess) equals
+    rho_bulk * V_pore / M to within 1e-6 mol/kg at every point, so adding that term
+    back to the excess data reconstructs the absolute isotherm exactly. This fit is
+    therefore ALGEBRAICALLY the absolute fit, not an independent estimate; it is
+    reported to show, with a number, that the K ratio does not depend on the
+    convention. It is not evidence of anything beyond that.
+    """
+    n_bulk = np.asarray(rho_bulk_kg_m3, float) * V_PORE_CM3_G * 1e-3 / M_CO2_KG_MOL
+    return fit_langmuir(p_bar, np.asarray(n_excess, float) + n_bulk, sigma)
 
 
 def show(name, f):
@@ -160,7 +176,15 @@ def main(argv=None):
           f"   ({fs['N_max']:.2f} vs {fe['N_max']:.2f} mol/kg)")
     print(f"    K      sim / exp = {fs['K_mol_kg_Pa'] / fe['K_mol_kg_Pa']:.3f}"
           f"   ({fs['K_mol_kg_Pa']:.2e} vs {fe['K_mol_kg_Pa']:.2e} mol/kg/Pa)")
-    pd.DataFrame([{"fit": "experiment_Bourrelly2005", **fe}, {"fit": f"simulation_{a.column}", **fs}]).to_csv(
+    fb = fit_excess_aware(s.p_bar, s.excess_mol_kg, s.excess_mol_kg_err95 / 2.776, s.bulk_density_kg_m3)
+    dK = 100 * (fb["K_mol_kg_Pa"] - fs["K_mol_kg_Pa"]) / fs["K_mol_kg_Pa"] if fs["ok"] else float("nan")
+    print(f"\n(b) excess-aware fit, for robustness (Langmuir for absolute minus rho_bulk(p) V_pore):")
+    print(f"    K = {fb['K_mol_kg_Pa']:.3e} +/- {fb['K_err_mol_kg_Pa']:.1e} mol/kg/Pa, "
+          f"N_max = {fb['N_max']:.3f} mol/kg -> {dK:+.2f} % vs the absolute fit")
+    print("    (identical by construction: RASPA's absolute - excess IS rho_bulk V_pore / M to 1e-6 mol/kg,")
+    print("     so the K ratio ~ 4 does not depend on the excess/absolute convention.)")
+    pd.DataFrame([{"fit": "experiment_Bourrelly2005", **fe}, {"fit": f"simulation_{a.column}", **fs},
+                  {"fit": "simulation_excess_aware_(b)", **fb}]).to_csv(
         ROOT / "results" / "langmuir_fits.csv", index=False)
 
     # ---- 4. the three curves

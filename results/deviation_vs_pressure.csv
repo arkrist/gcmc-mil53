@@ -1,0 +1,9 @@
+p_bar,convention,sim_over_exp,extrapolated_reference
+10.0,absolute,1.3207225274615564,False
+20.0,absolute,1.1683892521994277,False
+30.0,absolute,1.116895725308536,True
+50.0,absolute,1.0775228401458874,True
+10.0,excess,1.284154403800168,False
+20.0,excess,1.1030437034082248,False
+30.0,excess,1.0184366421331201,True
+50.0,excess,0.890842349947044,True

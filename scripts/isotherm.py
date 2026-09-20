@@ -123,6 +123,25 @@ def main(argv=None):
             g = ref[ref.in_lp_window == flag]
             if len(g):
                 ax.errorbar(g.pressure_bar, g.loading_mmol_per_g, label=lab, **style)
+    # Langmuir curves (fitted over P >= 9 bar; see scripts/langmuir.py)
+    try:
+        from langmuir import fit_langmuir
+        w = df[df.p_bar >= LP_WINDOW_BAR]
+        if len(w) >= 3:
+            fs = fit_langmuir(w.p_bar, w.absolute_mol_kg, w.absolute_mol_kg_err95 / 2.776)
+            pp = np.logspace(np.log10(df.p_bar.min()), np.log10(df.p_bar.max()), 300)
+            if fs["ok"]:
+                ax.plot(pp, fs["N_max"] * fs["b_per_bar"] * pp / (1 + fs["b_per_bar"] * pp),
+                        color=SIM["color"], lw=1.1, ls=":", zorder=1,
+                        label=f"Langmuir fit, this work (absolute, P $\\geq$ {LP_WINDOW_BAR:g} bar)")
+            if ref is not None:
+                er = ref[ref.in_lp_window]
+                fe = fit_langmuir(er.pressure_bar, er.loading_mmol_per_g, np.full(len(er), 0.05))
+                ax.plot(pp, fe["N_max"] * fe["b_per_bar"] * pp / (1 + fe["b_per_bar"] * pp),
+                        color=REF["color"], lw=1.1, ls="--", zorder=1,
+                        label="Langmuir fit, experiment = Coudert virtual lp curve")
+    except Exception as exc:  # never let the figure fail on the fit
+        print(f"  (Langmuir overlay skipped: {exc})")
     ax.set_xscale("log")
     ax.set_xlabel("Pressure [bar]")
     ax.set_ylabel("Loading [mol/kg  =  mmol/g]")
