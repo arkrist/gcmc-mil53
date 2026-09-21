@@ -1,0 +1,113 @@
+cff-version: 1.2.0
+title: >-
+  Grand canonical Monte Carlo of CO2 in rigid large-pore MIL-53(Al):
+  validation of a GCMC workflow against experiment
+message: "If you use this workflow or its results, please cite it as below."
+type: software
+authors:
+  - family-names: Ariskina
+    given-names: Kristina
+    orcid: "https://orcid.org/0000-0001-5782-2222"
+    city: Pau
+    country: FR
+abstract: >-
+  A grand canonical Monte Carlo workflow (RASPA2) for CO2 adsorption in the
+  large-pore form of MIL-53(Al) at 304 K, validated against RASPA's own reference
+  calculations, against the manometric isotherm of Bourrelly et al. (2005) and
+  against the osmotic-ensemble analysis of Coudert et al. (2008), with a
+  cross-code check against LAMMPS fix gcmc. The rigid framework reproduces the
+  saturation capacity of the open form to 0.5 %, while the generic UFF/DDEC/TraPPE
+  force field gives a Langmuir constant 3.95 times too high, i.e. it over-binds
+  CO2 at low coverage.
+keywords:
+  - grand canonical Monte Carlo
+  - GCMC
+  - MIL-53
+  - metal-organic framework
+  - CO2 adsorption
+  - RASPA
+  - LAMMPS
+  - molecular simulation
+license: MIT
+version: "1.0.0"
+date-released: "2026-09-21"
+references:
+  - type: article
+    authors:
+      - family-names: Bourrelly
+        given-names: Sandrine
+      - family-names: Llewellyn
+        given-names: Philip L.
+      - family-names: Serre
+        given-names: Christian
+      - family-names: Millange
+        given-names: Franck
+      - family-names: Loiseau
+        given-names: Thierry
+      - family-names: Férey
+        given-names: Gérard
+    title: >-
+      Different adsorption behaviors of methane and carbon dioxide in the
+      isotypic nanoporous metal terephthalates MIL-53 and MIL-47
+    journal: Journal of the American Chemical Society
+    year: 2005
+    volume: 127
+    start: 13519
+    end: 13521
+    doi: 10.1021/ja054668v
+  - type: article
+    authors:
+      - family-names: Coudert
+        given-names: François-Xavier
+      - family-names: Jeffroy
+        given-names: Marie
+      - family-names: Fuchs
+        given-names: Alain H.
+      - family-names: Boutin
+        given-names: Anne
+      - family-names: Mellot-Draznieks
+        given-names: Caroline
+    title: >-
+      Thermodynamics of guest-induced structural transitions in hybrid
+      organic-inorganic frameworks
+    journal: Journal of the American Chemical Society
+    year: 2008
+    volume: 130
+    start: 14294
+    end: 14302
+    notes: "Postprint: arXiv:1904.09588"
+  - type: article
+    authors:
+      - family-names: Nazarian
+        given-names: Dalar
+      - family-names: Camp
+        given-names: Jeffrey S.
+      - family-names: Sholl
+        given-names: David S.
+    title: >-
+      A comprehensive set of high-quality point charges for simulations of
+      metal-organic frameworks
+    journal: Chemistry of Materials
+    year: 2016
+    volume: 28
+    start: 785
+    end: 793
+    notes: "Data: Zenodo record 3986573 (CoRE MOF 2014 DDEC database)"
+  - type: article
+    authors:
+      - family-names: Dubbeldam
+        given-names: David
+      - family-names: Calero
+        given-names: Sofía
+      - family-names: Ellis
+        given-names: Donald E.
+      - family-names: Snurr
+        given-names: Randall Q.
+    title: >-
+      RASPA: molecular simulation software for adsorption and diffusion in
+      flexible nanoporous materials
+    journal: Molecular Simulation
+    year: 2016
+    volume: 42
+    start: 81
+    end: 101

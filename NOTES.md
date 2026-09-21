@@ -565,6 +565,57 @@ Agreement improves with pressure: ~30 % high at 10 bar, ~10 % at 20 bar, ~2 % at
 30 bar. This is consistent with over-binding at low coverage plus a correct
 saturation capacity.
 
+## Phase 4: cross-code check against LAMMPS `fix gcmc` (2026-09-21)
+
+Scope, as agreed: **three pressures (10, 20, 30 bar)**, same structure, same force
+field, same temperature, absolute loading, compared point by point against RASPA.
+A cross-code check, not a second isotherm. **Nothing is tuned to make the two
+codes agree**; if they disagreed beyond tolerance, the single-point energies would
+say where.
+
+LAMMPS 2025.07.22 from conda-forge (MC, RIGID, KSPACE, MOLECULE packages present).
+
+### Protocol decisions (and why)
+| item | choice | reason |
+|---|---|---|
+| reservoir | `pressure` + `fugacity_coeff`, with **RASPA's own Peng-Robinson phi** (0.949190 / 0.899667 / 0.851271) | mu = kT ln(phi P Lambda^3/kT): passing phi explicitly makes the two reservoirs identical instead of merely similar |
+| electrostatics | `kspace_style ewald 1.0e-6`, `full_energy` (LAMMPS applies it automatically with kspace and tail corrections) | every trial move costs a full energy evaluation; this is what makes the runs expensive |
+| rigid CO2 | molecule template, **MC only, no time integration**; NOT `fix rigid`/`fix shake` | with shake/rigid the docs allow exchange moves only (M = 0), so translations would have to come from MD. With no integrator the geometry cannot change and `fix gcmc` does exchanges + rigid-body translations/rotations, exactly as RASPA does |
+| intramolecular exclusions | bonds in the template + `bond_style zero` + `special_bonds lj/coul 0 0 0` | this also corrects the Ewald reciprocal term. `neigh_modify exclude` does NOT correct kspace and would leave the 1.16 A C-O pair in the reciprocal sum. Verified: one isolated CO2 gives -0.0005 kcal/mol |
+| tail corrections | `pair_modify tail yes` | matches RASPA's truncated + analytic tail; verified numerically below |
+| framework | rigid, `neigh_modify exclude group framework framework` | the host-host term is constant and cancels in every MC energy difference; excluding it only makes the runs cheaper |
+
+### Step 1: single-point energies on ONE identical configuration
+Framework (4x2x2, 1216 atoms) + **8 CO2** whose coordinates were taken from a RASPA
+restart file (12 decimals). RASPA prints its decomposition directly; in LAMMPS each
+cross term is **A - B - C** (framework+CO2, framework only, CO2 only), which is exact
+for the pair terms and for the Ewald reciprocal term (a quadratic form in the
+charges) and removes the host-host energy RASPA never computes.
+Reproduce with `python scripts/crosscheck_energy.py`.
+
+| term | RASPA [K] | LAMMPS [K] | difference | rel. |
+|---|---|---|---|---|
+| host-guest LJ (no tail) | -17916.900 | -17916.899 | +0.002 K | 1e-7 |
+| host-guest Coulomb, real space | 386.035 | 19673.446 | (split differs) | - |
+| host-guest Coulomb, reciprocal | 3.709 | -19283.579 | (split differs) | - |
+| **host-guest Coulomb, total** | **389.744** | **389.868** | +0.124 K | 3e-4 |
+| guest-guest LJ (no tail) | -500.852 | -500.852 | +0.000 K | 1e-8 |
+| guest-guest Coulomb, total | 522.263 | 521.842 | -0.421 K | 8e-4 |
+| tail correction (host-guest + guest-guest) | -646.319 | -646.319 | 0.000 K | 1e-8 |
+| **TOTAL interaction energy** | **-18152.064** | **-18152.360** | **-0.295 K** | **2e-5** |
+
+**The two codes agree to 0.002 % on the total interaction energy.** Two conventions
+had to be handled, both verified rather than assumed:
+1. **LAMMPS `E_vdwl` includes the tail correction** (`E_tail` is printed separately
+   for information); RASPA reports VDW without it. Verified by re-running with
+   `pair_modify tail no`: the difference is exactly `E_tail`. Subtracting it is what
+   turns a 3.6 % apparent disagreement into 1e-7.
+2. **The real-space/reciprocal split is convention-dependent** and differs wildly
+   (19673 vs 386 K in real space), because the codes choose the Ewald convergence
+   parameter by different criteria: RASPA alpha = 0.265058 A^-1 with kvec 7x9x7;
+   LAMMPS G = 0.275223 A^-1 with kmax1d = 10 (1438 vectors), from a relative force
+   accuracy of 1.05e-6. **Only the sums are physical**, and the sums agree.
+
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
 
