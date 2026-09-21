@@ -13,3 +13,11 @@ __pycache__/
 .DS_Store
 examples/**/EnergyHistograms/
 examples/**/NumberOfMoleculesHistograms/
+runs/
+*.data
+*.tar
+Output/
+Movies/
+Restart/
+VTK/
+.DS_Store
