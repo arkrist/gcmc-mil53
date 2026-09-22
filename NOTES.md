@@ -616,6 +616,45 @@ had to be handled, both verified rather than assumed:
    LAMMPS G = 0.275223 A^-1 with kmax1d = 10 (1438 vectors), from a relative force
    accuracy of 1.05e-6. **Only the sums are physical**, and the sums agree.
 
+### Step 2, first attempt (from an empty pore): NOT EQUILIBRATED, discarded
+10/20/30 bar, 1500 equilibration + 7000 production steps, each step 20 exchange +
+20 translation/rotation attempts (340,000 trial moves per point), 8 h per point on
+2 threads with three points in parallel (`runs/crosscheck/gcmc/`).
+
+| p [bar] | LAMMPS mean [molec/uc] | RASPA | delta | tolerance | verdict |
+|---|---|---|---|---|---|
+| 10 | 7.74 +/- 0.66 | 9.127 +/- 0.053 | -1.39 | 0.67 | not equilibrated |
+| 20 | 8.46 +/- 0.71 | 9.604 +/- 0.038 | -1.15 | 0.71 | not equilibrated |
+| 30 | 8.39 +/- 0.56 | 9.800 +/- 0.042 | -1.41 | 0.56 | not equilibrated |
+
+**The loading was still rising at the last step** (10 bar: 6.4 at step 1000, 7.8 at
+5000, 8.25 at the end; same at 20 and 30 bar). The runs were still filling the pore,
+so the means are biased low and the block error bars describe a **trend, not noise**:
+last block minus first block = +1.28 / +1.45 / +1.10 molec/uc, larger than the error
+bars themselves. **This is a sampling failure, not a code disagreement** -- the
+single-point energies (step 1) already showed the two force fields agree to 0.002 %.
+
+Two consequences, both kept:
+1. `crosscheck_gcmc.py` now **flags drift** (last block vs first block against the
+   error bar) and refuses to call such a point a pass or a failure, in the same
+   spirit as the Langmuir refusal logic.
+2. Filling an almost-full pore from empty with single-position insertions is the
+   wrong way to spend the cycles. LAMMPS must recompute the full Ewald sum for every
+   trial move (`full_energy` is mandatory with kspace) whereas RASPA updates it
+   incrementally and inserts with CBMC using 10 trial positions -- an inherent
+   efficiency difference of the two implementations, not of the physics.
+
+### Step 2, second attempt: two complementary runs
+- **Seeded** (`runs/crosscheck/seeded/`): LAMMPS starts from RASPA's own equilibrated
+  configuration at that pressure (145 / 153 / 151 molecules from the RASPA restart
+  files) and must **stay** there. If the two ensembles differed, N would drift away.
+  This removes the filling transient entirely.
+- **Continued** (`runs/crosscheck/gcmc/`, restarted from the final configuration of
+  the first attempt): checks that the from-empty runs reach the same plateau
+  independently.
+Agreement of the two is what makes the check conclusive; the seeded run alone tests
+maintenance of the state, not independent approach to it.
+
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
 
