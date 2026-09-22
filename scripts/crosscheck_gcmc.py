@@ -21,8 +21,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).parent))
+import parse_raspa_output as pro  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
-GCMC = ROOT / "runs" / "crosscheck" / "gcmc"
+GCMC = ROOT / "runs" / "crosscheck" / "gcmc"  # overridden by --dir
 T95 = 2.776
 
 
@@ -62,6 +65,21 @@ def block_stats(x, nblocks=5):
     return mean, err, len(x), bool(abs(drift) > max(err, 1e-12)), drift
 
 
+def raspa_fluctuation(data_file):
+    """sd of the instantaneous molecule count per unit cell in RASPA's production run.
+
+    <dN^2> is a physical property of the grand-canonical ensemble (it fixes the
+    compressibility), so both codes must reproduce it. A LAMMPS run whose N
+    fluctuates far less than RASPA's has a frozen particle number: its samples are
+    strongly correlated and its block error bar understates the true uncertainty,
+    however smooth the trace looks.
+    """
+    tr = pro.loading_trace(data_file)
+    prod = tr[tr.stage == "prod"]
+    row = pro.parse_file(data_file).iloc[0]
+    return float((prod.N_box / row.n_unit_cells).std()), float(prod.N_box.std())
+
+
 def lammps_kspace(log):
     t = Path(log).read_text()
     g = re.search(r"G vector \(1/distance\)\s*=\s*([\d.eE+-]+)", t)
@@ -75,10 +93,12 @@ def lammps_kspace(log):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--equil", type=int, default=1500)
+    ap.add_argument("--dir", default=None, help="run directory (default runs/crosscheck/gcmc)")
     a = ap.parse_args(argv)
+    base = Path(a.dir) if a.dir else GCMC
     raspa = pd.read_csv(ROOT / "results" / "isotherm_MIL53_lp_CO2_304K.csv", comment="#")
     rows = []
-    for d in sorted(GCMC.glob("p_*bar"), key=lambda p: float(p.name[2:-3])):
+    for d in sorted(base.glob("p_*bar"), key=lambda p: float(p.name[2:-3])):
         log = d / "gcmc.log"
         if not log.exists():
             continue
@@ -108,19 +128,29 @@ def main(argv=None):
                      "drift_last_minus_first_block": drift, "not_equilibrated": drifting,
                      "RASPA_mol_kg": r.absolute_mol_kg, "LAMMPS_mol_kg": mean * 1000 / 832.415,
                      "LAMMPS_G_per_A": gvec, "LAMMPS_kmax1d": kmax1d, "LAMMPS_kvectors": kmax3d,
-                     "RASPA_alpha_per_A": 0.265058, "RASPA_kvec": "7 9 7"})
+                     "RASPA_alpha_per_A": 0.265058, "RASPA_kvec": "7 9 7",
+                     "sd_N_uc_RASPA": raspa_fluctuation(r.file)[0],
+                     "sd_N_uc_LAMMPS": float(prod.nuc.std())})
     if not rows:
         sys.exit("no LAMMPS production data yet")
     df = pd.DataFrame(rows)
     (ROOT / "results").mkdir(exist_ok=True)
     df.to_csv(ROOT / "results" / "crosscheck_gcmc.csv", index=False)
     show = ["p_bar", "RASPA_molec_uc", "RASPA_err95", "LAMMPS_molec_uc", "LAMMPS_err95",
-            "delta", "tolerance", "pass", "drift_last_minus_first_block", "not_equilibrated"]
+            "delta", "tolerance", "pass", "drift_last_minus_first_block", "not_equilibrated",
+            "sd_N_uc_RASPA", "sd_N_uc_LAMMPS"]
     with pd.option_context("display.width", 220, "display.float_format", "{:.4f}".format):
         print(df[show].to_string(index=False))
     print(f"\nEwald: RASPA alpha = 0.265058 A^-1, kvec 7 9 7; "
           f"LAMMPS G = {df.LAMMPS_G_per_A.iloc[0]} A^-1, kmax1d = {df.LAMMPS_kmax1d.iloc[0]}, "
           f"{df.LAMMPS_kvectors.iloc[0]} vectors")
+    df["fluctuation_ratio"] = df.sd_N_uc_LAMMPS / df.sd_N_uc_RASPA
+    for _, r in df.iterrows():
+        if r.fluctuation_ratio < 0.5:
+            print(f"  FROZEN N at {r.p_bar:g} bar: sd(N) = {r.sd_N_uc_LAMMPS:.3f} molec/uc in LAMMPS vs "
+                  f"{r.sd_N_uc_RASPA:.3f} in RASPA (ratio {r.fluctuation_ratio:.2f}). <dN^2> is a physical "
+                  "property of the ensemble: too small means the samples are correlated and the block "
+                  "error bar is optimistic.")
     for _, r in df[df.not_equilibrated].iterrows():
         print(f"  NOT EQUILIBRATED at {r.p_bar:g} bar: last block - first block = "
               f"{r.drift_last_minus_first_block:+.3f} molec/uc vs error bar {r.LAMMPS_err95:.3f}. "
