@@ -15,7 +15,7 @@ rigid-lp" branch in Coudert's sense.
 
 ![Deviation over the lp branch](results/deviation_vs_pressure.png)
 
-Full technical note: [`docs/GCMC_MIL53Al_CO2_technical_note.pdf`](docs/GCMC_MIL53Al_CO2_technical_note.pdf).
+Full technical note: [`docs/technical_note.md`](docs/technical_note.md).
 **Every choice, number, failure and correction is recorded in [`NOTES.md`](NOTES.md)**, written
 as the work happened — including what was tried and rejected.
 
@@ -36,7 +36,7 @@ evaluation for every trial move and its particle number is nearly frozen within 
 | 30 | 9.42 | 9.91 | 9.800 ± 0.042 |
 
 Molecules per unit cell. Details, protocol and diagnostics:
-[`docs/phase4_crosscheck.md`](docs/phase4_crosscheck.md).
+[`docs/technical_note.md`](docs/technical_note.md) (section 6).
 
 ## Reproduce
 macOS with Homebrew; on Linux replace only the micromamba install line.

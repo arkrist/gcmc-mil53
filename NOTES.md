@@ -682,7 +682,7 @@ difference, not physics -- and step 1 had already shown the force fields agree t
 Both failure modes are now **permanent guards** in the analysis scripts: a drift test
 (last block vs first block against the error bar) and a fluctuation test (sd(N)
 against RASPA's). Neither lets an unconverged run be reported as a code
-disagreement. Full write-up: `docs/phase4_crosscheck.md`.
+disagreement. Full write-up: `docs/technical_note.md` (section 6).
 
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
