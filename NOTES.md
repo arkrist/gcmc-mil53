@@ -206,7 +206,7 @@ Other sources checked:
   The Cr LJ parameters (eps 1.297 kJ/mol = 156.0 K, sigma 3.911 A) equal DREIDING's
   **Al** values. Guests: CO2 (q_C +0.6512, C=O 1.162 A, harmonic bend) and N2.
   **No Al structure and no lp geometry usable for us** (Cr, and no coordinates).
-  **Worth knowing before meeting A. Ghoufi:** his MIL-53(Cr) force field uses the
+  **Note on this force field:** his MIL-53(Cr) model uses the
   **DREIDING Al** Lennard-Jones parameters for Cr, and a CO2 model with
   **q_C = +0.6512**, the same charge as RASPA's built-in `ExampleDefinitions/CO2.def`
   (Garcia-Sanchez type), **not TraPPE** (q_C = +0.70), which is what we use.

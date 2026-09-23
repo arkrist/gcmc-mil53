@@ -21,7 +21,6 @@ Simulation
 ===========================================================================
 Dimensions: 3
 Random number seed: 1789768609
-RASPA directory set to: /Users/kariskina/micromamba/envs/gcmc-mil53
 String appended to output-files: 
 Number of cycles: 25000
 Number of initializing cycles: 5000

@@ -39,6 +39,8 @@ def collect(tag):
         if not files:
             continue
         r = pro.parse_file(files[0]).iloc[0].to_dict()
+        # store the path relative to the repository, not the machine it ran on
+        r["file"] = str(Path(r["file"]).resolve().relative_to(ROOT))
         if not r.get("finished"):
             print(f"  (skipping {d.name}: not finished)")
             continue
