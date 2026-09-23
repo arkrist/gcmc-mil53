@@ -1,7 +1,7 @@
 # CO2 in MIL-53(Al) lp by rigid-framework GCMC (RASPA2): working notes
 
 Each physical or technical choice is recorded here with its reason. Items marked
-**OPEN** still need a decision from the project owner.
+**OPEN** are still undecided.
 
 ---
 
@@ -123,7 +123,7 @@ composition and DOI govern.
   cells instead of 22.5).
 
 **Change of basis and its verification** (run on the re-read output file; the
-agreed rule was to fall back to the primitive cell on any failure, never to patch):
+rule was to fall back to the primitive cell on any failure, never to patch):
 C = M P with M = [[-1,0,0],[0,-1,1],[1,1,1]] (rows = conventional a, b, c).
 
 | check | result |
@@ -176,7 +176,7 @@ cell: 4 formula units Al(OH)(O2C-C6H4-CO2), i.e. Al4 O20 C32 H20 = **76 atoms**,
 M_uc = 4 x 208.10 = **832.4 g/mol**, neutral.
 
 ### Structure provenance (search of 2026-09-19)
-Search order as instructed: CoRE MOF (GitHub mirrors, then the Zenodo DDEC record),
+Search order: CoRE MOF (GitHub mirrors, then the Zenodo DDEC record),
 QMOF, simulation SI, Ghoufi's repository. No CSD access. Every CIF was screened by
 cell against the Loiseau lp cell (sorted axes, 1 %). Files in a primitive/reduced
 setting were compared through their implied conventional cell (lattice-vector
@@ -567,7 +567,7 @@ saturation capacity.
 
 ## Phase 4: cross-code check against LAMMPS `fix gcmc` (2026-09-21)
 
-Scope, as agreed: **three pressures (10, 20, 30 bar)**, same structure, same force
+Scope: **three pressures (10, 20, 30 bar)**, same structure, same force
 field, same temperature, absolute loading, compared point by point against RASPA.
 A cross-code check, not a second isotherm. **Nothing is tuned to make the two
 codes agree**; if they disagreed beyond tolerance, the single-point energies would
