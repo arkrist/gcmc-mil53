@@ -644,16 +644,45 @@ Two consequences, both kept:
    incrementally and inserts with CBMC using 10 trial positions -- an inherent
    efficiency difference of the two implementations, not of the physics.
 
-### Step 2, second attempt: two complementary runs
-- **Seeded** (`runs/crosscheck/seeded/`): LAMMPS starts from RASPA's own equilibrated
-  configuration at that pressure (145 / 153 / 151 molecules from the RASPA restart
-  files) and must **stay** there. If the two ensembles differed, N would drift away.
-  This removes the filling transient entirely.
-- **Continued** (`runs/crosscheck/gcmc/`, restarted from the final configuration of
-  the first attempt): checks that the from-empty runs reach the same plateau
-  independently.
-Agreement of the two is what makes the check conclusive; the seeded run alone tests
-maintenance of the state, not independent approach to it.
+### Step 2, second attempt: four run families, and the verdict
+Because a run started from one side keeps memory of where it started, the loading
+was approached from **both** sides at every pressure (`scripts/crosscheck_summary.py`,
+`results/crosscheck_gcmc_summary.csv`):
+
+| family | 10 bar | 20 bar | 30 bar |
+|---|---|---|---|
+| from an empty pore (first attempt) | 7.74 (rising) | 8.46 (rising) | 8.39 (rising) |
+| continued from those | 8.67 (rising) | 9.17 | 9.14 (rising) |
+| seeded from RASPA's configuration | 9.076 +/- 0.110 | 9.521 +/- 0.042 | 9.423 |
+| seeded from above | 9.285 (falling) | 10.080 (falling) | 9.907 (falling) |
+| **RASPA** | **9.127 +/- 0.053** | **9.604 +/- 0.038** | **9.800 +/- 0.042** |
+
+**Verdict: consistent, not confirmed.** RASPA's loading lies inside the two-sided
+LAMMPS bracket at all three pressures (midpoints 9.18 +/- 0.10, 9.80 +/- 0.28,
+9.67 +/- 0.24 vs 9.127, 9.604, 9.800). The Phase-1 criterion cannot be applied to a
+single LAMMPS run, because its block error bar is not the true uncertainty:
+
+- **sd(N) is 0.23-0.49x RASPA's** (RASPA 3.0-3.3 molecules, LAMMPS 0.7-1.5).
+  <dN^2> is a physical property of the grand-canonical ensemble, so the two codes
+  must reproduce it; a too-narrow distribution means N is nearly frozen within a run
+  and the samples are correlated.
+- **Runs retain their starting configuration**: from below they end low, from above
+  they end high, and the sides were still converging when the runs ended. The spread
+  between them is the honest uncertainty, not the block error bar of either.
+
+**Cause, established not guessed.** With kspace and tail corrections LAMMPS requires
+`full_energy`, so every trial move costs a **full Ewald evaluation of the whole
+system**, and insertions are tried at a single random position; RASPA updates Ewald
+incrementally and inserts with CBMC (10 trial positions). Near saturation
+(~0.4 % acceptance) that decides everything: 12 RASPA points cost 12 h, while the
+LAMMPS runs cost ~70 h of wall time for 3 pressures. This is an implementation
+difference, not physics -- and step 1 had already shown the force fields agree to
+0.002 %.
+
+Both failure modes are now **permanent guards** in the analysis scripts: a drift test
+(last block vs first block against the error bar) and a fluctuation test (sd(N)
+against RASPA's). Neither lets an unconverged run be reported as a code
+disagreement. Full write-up: `docs/phase4_crosscheck.md`.
 
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
