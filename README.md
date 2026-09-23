@@ -1,9 +1,7 @@
 # GCMC of CO₂ in rigid large-pore MIL-53(Al)
 
-Validation of a grand canonical Monte Carlo workflow (RASPA2) against experiment, for
-CO₂ adsorption in the large-pore (lp) form of MIL-53(Al) at 304 K.
-
-A complete GCMC workflow was built from scratch and validated in three stages: reproducing
+Validation of a grand canonical Monte Carlo workflow (RASPA2) against experiment, for CO₂
+adsorption in the large-pore (lp) form of MIL-53(Al) at 304 K. A complete GCMC workflow was built from scratch and validated in three stages: reproducing
 RASPA's own reference calculations (CH₄ in MFI, CO₂ in Cu-BTC); computing the helium void
 fraction and the zero-coverage Henry coefficient; and comparing a twelve-point isotherm
 (0.01–50 bar) in the rigid lp framework with the manometric data of Bourrelly
@@ -21,6 +19,25 @@ Full technical note: [`docs/GCMC_MIL53Al_CO2_technical_note.pdf`](docs/GCMC_MIL5
 **Every choice, number, failure and correction is recorded in [`NOTES.md`](NOTES.md)**, written
 as the work happened — including what was tried and rejected.
 
+## Cross-code check: LAMMPS `fix gcmc`
+
+Same structure, force field and temperature, at three pressures. **Single-point energies on
+one identical configuration agree to 0.002 %** (total interaction energy −18152.06 vs
+−18152.36 K), so the force field is code-independent. The loadings are **consistent, not
+confirmed**: RASPA lies inside the two-sided LAMMPS bracket everywhere, but LAMMPS cannot
+reach RASPA's precision at reasonable cost, because `full_energy` forces a complete Ewald
+evaluation for every trial move and its particle number is nearly frozen within a run
+(sd(N) = 0.23–0.49 × RASPA's).
+
+| p [bar] | LAMMPS from below | from above | RASPA |
+|---|---|---|---|
+| 10 | 9.08 | 9.29 | 9.127 ± 0.053 |
+| 20 | 9.52 | 10.08 | 9.604 ± 0.038 |
+| 30 | 9.42 | 9.91 | 9.800 ± 0.042 |
+
+Molecules per unit cell. Details, protocol and diagnostics:
+[`docs/phase4_crosscheck.md`](docs/phase4_crosscheck.md).
+
 ## Reproduce
 macOS with Homebrew; on Linux replace only the micromamba install line.
 
@@ -36,19 +53,15 @@ simulate -v      # binary is `simulate`; NB it misreports "2.0.41" -- the versio
 ```bash
 # 2. sanity checks against RASPA's own reference outputs (~15 min + ~2.5 h)
 git clone --depth 1 --branch v2.0.50 https://github.com/iRASPA/RASPA2 ~/src/RASPA2-2.0.50
-bash scripts/run_example.sh mfi_ch4
-bash scripts/run_example.sh cubtc_co2
-python scripts/compare_example.py mfi_ch4    # pass/fail with tolerances
-python scripts/compare_example.py cubtc_co2
+bash scripts/run_example.sh mfi_ch4 && python scripts/compare_example.py mfi_ch4
+bash scripts/run_example.sh cubtc_co2 && python scripts/compare_example.py cubtc_co2
 ```
 
 ```bash
 # 3. structure (download once, verify by cell, transform to the 76-atom cell)
 python scripts/fetch_structure.py            # Zenodo 3986573, md5 checked
 python scripts/check_cif.py structures/MIL-53_Al_lp.cif
-```
 
-```bash
 # 4. void fraction and zero-coverage Henry coefficient (~45 min + ~20 min)
 bash scripts/run_helium.sh
 bash scripts/run_widom.sh
@@ -70,14 +83,11 @@ python scripts/convergence.py --points 1000 10000 5000000
 python scripts/deviation.py      # the figure above
 ```
 
-Cross-code check against LAMMPS `fix gcmc` (single-point energies and three pressures):
-see [`docs/phase4_crosscheck.md`](docs/phase4_crosscheck.md).
-
 ## Layout
-`environment.yml` · `forcefield/` (UFF framework, TraPPE CO₂, helium probe, mixing rules) ·
-`structures/` (working CIF, original with md5) · `templates/` (RASPA input templates) ·
-`scripts/` · `reference/` (digitised data, with a README defining columns and conventions) ·
-`runs/` (inputs and outputs) · `results/` (CSV and figures) · `docs/` · `NOTES.md`.
+`environment.yml` · `forcefield/` · `structures/` (working CIF + original with md5) ·
+`templates/` · `scripts/` · `reference/` (digitised data + column/convention README) ·
+`results/` (CSV and figures) · `docs/` · `NOTES.md`. Run directories are not tracked
+(`runs/` is gitignored); the scripts regenerate them.
 
 ## License and citation
 MIT, see [`LICENSE`](LICENSE). Citation metadata in [`CITATION.cff`](CITATION.cff).

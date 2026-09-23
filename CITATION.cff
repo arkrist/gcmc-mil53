@@ -29,8 +29,8 @@ keywords:
   - LAMMPS
   - molecular simulation
 license: MIT
-version: "1.0.0"
-date-released: "2026-09-21"
+version: "1.1.0"
+date-released: "2026-09-23"
 references:
   - type: article
     authors:
@@ -75,7 +75,7 @@ references:
     volume: 130
     start: 14294
     end: 14302
-    notes: "Postprint: arXiv:1904.09588"
+    notes: "Postprint: arXiv:1904.09588 (journal DOI not verified, deliberately omitted)"
   - type: article
     authors:
       - family-names: Nazarian
@@ -111,3 +111,125 @@ references:
     volume: 42
     start: 81
     end: 101
+  - type: article
+    authors:
+      - family-names: Loiseau
+        given-names: Thierry
+      - family-names: Serre
+        given-names: Christian
+      - family-names: Huguenard
+        given-names: Claire
+      - family-names: Fink
+        given-names: Gerhard
+      - family-names: Taulelle
+        given-names: Francis
+      - family-names: Henry
+        given-names: Marc
+      - family-names: Bataille
+        given-names: Thierry
+      - family-names: Férey
+        given-names: Gérard
+    title: >-
+      A rationale for the large breathing of the porous aluminum terephthalate
+      (MIL-53) upon hydration
+    journal: Chemistry – A European Journal
+    year: 2004
+    volume: 10
+    start: 1373
+    end: 1382
+    doi: 10.1002/chem.200305413
+    notes: "Source of the MIL-53(Al) lp structure used here"
+  - type: article
+    authors:
+      - family-names: Ghoufi
+        given-names: Aziz
+      - family-names: Maurin
+        given-names: Guillaume
+    title: >-
+      Hybrid Monte Carlo simulations combined with a phase mixture model to
+      predict the structural transitions of a porous metal-organic framework
+      material upon adsorption of guest molecules
+    journal: The Journal of Physical Chemistry C
+    year: 2010
+    volume: 114
+    start: 6496
+    end: 6502
+    doi: 10.1021/jp911484g
+  - type: article
+    authors:
+      - family-names: Ramsahye
+        given-names: Naseem A.
+      - family-names: Maurin
+        given-names: Guillaume
+      - family-names: Bourrelly
+        given-names: Sandrine
+      - family-names: Llewellyn
+        given-names: Philip L.
+      - family-names: Devic
+        given-names: Thomas
+      - family-names: Serre
+        given-names: Christian
+      - family-names: Loiseau
+        given-names: Thierry
+      - family-names: Férey
+        given-names: Gérard
+    title: >-
+      Adsorption of CO2 in metal organic frameworks of different metal centres:
+      Grand Canonical Monte Carlo simulations compared to experiments
+    journal: Adsorption
+    year: 2007
+    doi: 10.1007/s10450-007-9025-5
+  - type: article
+    authors:
+      - family-names: Ariskina
+        given-names: Kristina
+      - family-names: Galliéro
+        given-names: Guillaume
+      - family-names: Obliger
+        given-names: Amaël
+    title: >-
+      Confined fluid dynamics in a viscoelastic, amorphous, and microporous
+      medium
+    journal: The Journal of Chemical Physics
+    year: 2024
+    doi: 10.1063/5.0225299
+  - type: article
+    authors:
+      - family-names: Ariskina
+        given-names: Kristina
+      - family-names: Galliéro
+        given-names: Guillaume
+      - family-names: Obliger
+        given-names: Amaël
+    title: "Adsorption-induced swelling impact on CO2 storage in kerogen"
+    journal: Fuel
+    year: 2024
+    doi: 10.1016/j.fuel.2023.130475
+  - type: article
+    authors:
+      - family-names: Potier
+        given-names: K.
+      - family-names: Ariskina
+        given-names: Kristina
+      - family-names: Obliger
+        given-names: Amaël
+    title: >-
+      Molecular simulation of argon adsorption and diffusion in a microporous
+      carbon
+    journal: Langmuir
+    year: 2023
+    doi: 10.1021/acs.langmuir.3c00865
+  - type: article
+    authors:
+      - family-names: Ariskina
+        given-names: Kristina
+      - family-names: Galliéro
+        given-names: Guillaume
+      - family-names: Obliger
+        given-names: Amaël
+    title: >-
+      Free volume model for transport in flexible kerogen of source rock's
+      organic matter
+    journal: The Journal of Physical Chemistry B
+    year: 2022
+    doi: 10.1021/acs.jpcb.2c03970
