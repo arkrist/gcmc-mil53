@@ -1120,6 +1120,115 @@ network -ha -res out.res structures/MIL-53_Al_np.cif  # 5.6b step 2 (Zeo++, env 
 network -ha -volpo 1.65 1.65 50000 out.volpo structures/MIL-53_Al_np.cif
 ```
 
+### 5.7 The CO2-loaded np cell, from the primary literature (2026-09-27)
+
+The hypothesis of 5.6b is **confirmed from primary sources**, obtained by the author
+directly. The one unverified number is now verified, and there is a published precedent
+for applying the Cr cell to Al.
+
+**5.7.1 Primary cells.**
+
+**Serre et al., Adv. Mater. 2007, 19, 2246** -- in situ synchrotron XRD, MIL-53(**Cr**),
+space group C2/c:
+
+| state | a [A] | b [A] | c [A] | beta [deg] | V [A^3] |
+|---|---|---|---|---|---|
+| hydrated lt | 19.685(4) | 7.849(1) | 6.782(1) | 104.90(1) | 1012.8 |
+| **np under 1 bar CO2** | **19.713(1)** | **8.310(1)** | **6.806(1)** | **105.85(1)** | **1072.5(1)** |
+
+**The opening is almost entirely along b: 7.849 -> 8.310 A (+5.9 %)**, with a and c
+essentially fixed (+0.14 %, +0.35 %) and beta moving by 0.95 deg. This is the lozenge
+shear, and it is why isotropic scaling was rejected.
+
+**Dundar et al., J. Mol. Model. 2017 (DOI 10.1007/s00894-017-3281-4), Table 1** -- used
+*exactly this Cr cell for MIL-53(Al)* np: a = 19.716, b = 8.310, c = 6.805 A,
+beta = 105.85 deg, C2/c. **Published precedent for the Al substitution**, which is what
+makes 5.7.2 a documented procedure rather than an invention of ours.
+
+**Salles et al., Angew. Chem. Int. Ed. 2008, 47, 8487** -- flexible MD:
+
+| | simulated | experiment |
+|---|---|---|
+| np at 2.2 CO2 per unit cell | 1092 A^3 | 1072 A^3 |
+| lp at 8 CO2 per unit cell | 1516 A^3 | 1515 A^3 |
+
+and the np phase **persists to 3 CO2 per unit cell** -- which is the loading Bourrelly's
+0.75 CO2 per OH implies and the one 5.5 assumed for N_max(np). The assumption was sound.
+
+**Stavitski et al., Langmuir 2011, 27, 3970, SI** -- DFT structures of MIL-53(**Al**)
+with full coordinates, including CO2@np. **Cell parameters were optimised at plain PBE,
+dispersion added only for internal relaxation at fixed cell**, so these are a
+*"PBE without dispersion" reference, not truth*:
+
+| | empty lp | empty np | CO2@lp | CO2@np (1 CO2/cell) |
+|---|---|---|---|---|
+| V [A^3] | 1437.7 | 970.2 | 1509.5 | 1232.9 |
+
+This set has a second use, in 5.7.4: it is an external calibration for our MACE
+validation.
+
+**Where our file sits.** In the same C2/c setting our Al np is
+19.499 / 7.617 / 6.569, beta 104.22, V 945.8 A^3:
+
+| | b [A] | V [A^3] | vs ours |
+|---|---|---|---|
+| ours, Al, dehydrated lt geometry | 7.617 | 945.8 | - |
+| Serre, Cr, hydrated lt | 7.849 | 1012.8 | +3.0 % in b, +7.1 % in V |
+| **Serre, Cr, np under CO2** | **8.310** | **1072.5** | **+9.1 % in b, +13.4 % in V** |
+
+The Al/Cr volume ratio is 0.934 for the hydrated forms and 0.950 for the lp forms, so
+our file is the Al analogue of the *hydrated* np, exactly as 5.6b argued.
+
+**5.7.2 Building the Al CO2-np cell** (`scripts/build_np_co2_cell.py`).
+
+Our file is P1 in the setting 6.5687 / 15.2347 / 18.9855, beta 95.377. The basis change
+**[a+c, b, -a]** re-expresses it as **19.4993 / 15.2347 / 6.5687, beta 104.219**, with
+volume ratio **exactly +1.000000** (volume-preserving and right-handed, asserted in the
+script) -- the C2/c setting of Loiseau 2004 with b doubled. The doubling is *kept*, not
+folded away: a b/2 translation maps only 86 of the 152 atoms (5.1), so folding would
+discard half of a genuinely ordered superstructure. The fractional coordinates are then
+read into the target cell, so the topology, the atom order, the labels and the charges
+all survive untouched; only the lozenge angle and the b opening change.
+
+Two files are built, both `structures/derived/`, both doubled along b:
+
+| file | V per formula cell | basis |
+|---|---|---|
+| `MIL-53_Al_np_Serre2007_CrCO2np.cif` | **1072.54 A^3** | the Cr cell as used for Al by Dundar 2017 -- PRIMARY |
+| `MIL-53_Al_np_Serre2007_scaledAl.cif` | **1019.13 A^3** | the same cell scaled by (1412/1486)^(1/3); SENSITIVITY |
+
+Checks, both files: composition **Al8C64H40O40**, mass **832.415 g/mol per formula
+cell** (identical to lp and to the original np, so loadings stay directly comparable),
+net charge **-0.000000 e**, shortest contact **0.969 A** (the mu-OH bond, as expected).
+
+**The check that matters is bond strain.** Transplanting fractional coordinates into a
+bigger cell stretches every bond by roughly the cell strain:
+
+| bond | n | before -> after | mean change |
+|---|---|---|---|
+| Al-O | 48 | 1.894 -> 1.975 A | **+4.31 %** |
+| C-O | 32 | 1.270 -> 1.312 A | +3.32 % |
+| C-H | 32 | 0.980 -> 1.012 A | +3.25 % |
+| C-C | 64 | 1.407 -> 1.432 A | +1.85 % |
+
+An aromatic C-C bond does not stretch 1.9 %, and an Al-O bond does not stretch 4.3 %.
+**This is exactly what the fixed-cell internal relaxation has to repair**, and it is why
+the unrelaxed transplant must not be used for anything.
+
+**5.7.3 Zeo++ on the transplanted cells, BEFORE relaxation.**
+
+| structure | V/cell | LCD | PLD | CO2-probe (1.65 A) accessible volume |
+|---|---|---|---|---|
+| np, original | 945.8 | 2.828 A | 2.516 A | **0** |
+| np, Serre CO2 cell, **unrelaxed** | 1072.5 | 3.248 A | **2.904 A** | **still 0** |
+| np, scaled-Al cell, **unrelaxed** | 1019.1 | 3.145 A | 2.805 A | **still 0** |
+| lp | 1412.0 | 7.014 A | 6.771 A | 675 A^3 (47.8 %) |
+
+The bottleneck opens from 2.52 to 2.90 A, but CO2 needs 3.30 A, so the accessible volume
+is **still exactly zero**. That is not yet the answer: the unrelaxed transplant has all
+its bonds stretched 2-4 %, which pushes framework atoms *into* the pore. The relaxation
+pulls them back, and the post-relaxation numbers are what count.
+
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
 

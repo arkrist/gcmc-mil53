@@ -321,8 +321,8 @@ def main(argv=None):
     print(f"  <U>   this sampler  : {lp.U_boltzmann_kJ_mol:.2f} kJ/mol   "
           f"(difference {lp.U_boltzmann_kJ_mol - RASPA_LP_U:+.2f} kJ/mol)")
     ok = 0.5 < lp.K_H_mol_kg_Pa / RASPA_LP_KH < 2.0
-    print(f"  -> {'VALIDATED' if ok else 'NOT VALIDATED'} (K_H within a factor 2, "
-          "the accuracy a cut-off Coulomb sum can be expected to reach)")
+    print(f"  -> {'VALIDATED' if ok else 'NOT VALIDATED'} (K_H within a factor 2; the residual "
+          "is finite sampling of the rare deep wells, which dominate <exp(-beta U)>)")
     if not ok:
         print("     The np numbers below are therefore reported as indicative only.")
 
