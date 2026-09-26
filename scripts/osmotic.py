@@ -26,6 +26,7 @@ scanned.
 Usage: python scripts/osmotic.py [--dF 2.5] [--scan 1 4]
 """
 import argparse
+import textwrap
 import sys
 from pathlib import Path
 
@@ -172,11 +173,22 @@ def main(argv=None):
     print("\n" + "=" * 78)
     print("2. OUR SIMULATED PARAMETERS")
     sim_lp = langmuir_from_isotherm(ROOT / "results" / "isotherm_MIL53_lp_CO2_304K.csv")
-    print(f"   lp (rigid, DDEC): N_max = {sim_lp['nmax']:.2f} molec/cell, b = {sim_lp['b']:.3e} /Pa, "
-          f"K = {sim_lp['fit']['K_mol_kg_Pa']:.3e} mol/kg/Pa, fit ok = {sim_lp['fit']['ok']}")
+    print(f"   lp (rigid, SABVUN-DDEC, 12 pts): N_max = {sim_lp['nmax']:.2f} molec/cell, "
+          f"b = {sim_lp['b']:.3e} /Pa, K = {sim_lp['fit']['K_mol_kg_Pa']:.3e} mol/kg/Pa, "
+          f"fit ok = {sim_lp['fit']['ok']}")
     np_csv = ROOT / "results" / "isotherm_MIL53_np_CO2_304K.csv"
     sets = {"experiment (Coudert)": exp,
             "simulated lp + experimental np": dict(exp, nmax_lp=sim_lp["nmax"], b_lp=sim_lp["b"])}
+    # The np file is PACMAN-DDEC6, so pairing it with the SABVUN-DDEC lp mixes charge sets.
+    # The lp-PACMAN run (scripts/charge_model_compare.py) gives the charge-consistent
+    # partner; both pairs are carried through so the mixing can be seen, not assumed away.
+    pac_csv = ROOT / "results" / "isotherm_MIL53_lp_pacman_CO2_304K.csv"
+    sim_lp_pac = None
+    if pac_csv.exists():
+        sim_lp_pac = langmuir_from_isotherm(pac_csv)
+        print(f"   lp (rigid, PACMAN, 4 pts):      N_max = {sim_lp_pac['nmax']:.2f} molec/cell, "
+              f"b = {sim_lp_pac['b']:.3e} /Pa, K = {sim_lp_pac['fit']['K_mol_kg_Pa']:.3e} mol/kg/Pa, "
+              f"fit ok = {sim_lp_pac['fit']['ok']}")
     if np_csv.exists():
         sim_np = langmuir_from_isotherm(np_csv)
         print(f"   np (rigid, PACMAN): N_max = {sim_np['nmax']:.2f} molec/cell, b = {sim_np['b']:.3e} /Pa, "
@@ -184,8 +196,13 @@ def main(argv=None):
         if not sim_np["fit"]["ok"]:
             print("   NOTE: the np Langmuir fit is degenerate (the simulated np isotherm does not "
                   "saturate); K = N_max b is still meaningful, N_max and b separately are not.")
-        sets["simulated lp + simulated np"] = {"nmax_lp": sim_lp["nmax"], "b_lp": sim_lp["b"],
-                                               "nmax_np": sim_np["nmax"], "b_np": sim_np["b"]}
+        sets["simulated lp (DDEC) + simulated np (PACMAN): MIXED charge sets"] = {
+            "nmax_lp": sim_lp["nmax"], "b_lp": sim_lp["b"],
+            "nmax_np": sim_np["nmax"], "b_np": sim_np["b"]}
+        if sim_lp_pac is not None:
+            sets["simulated lp + np, both PACMAN: CONSISTENT pair"] = {
+                "nmax_lp": sim_lp_pac["nmax"], "b_lp": sim_lp_pac["b"],
+                "nmax_np": sim_np["nmax"], "b_np": sim_np["b"]}
     for name, par in sets.items():
         cr = transitions(par, a.dF)[3]
         print(f"   {name:32s} -> " + (", ".join(f"{p:.3f} bar ({w})" for p, w in cr) if cr
@@ -208,7 +225,7 @@ def main(argv=None):
                         xycoords="axes fraction", fontsize=9, color=EXTRA[0])
         ax.set_xscale("log")
         ax.set_xlabel("Pressure [bar]")
-        ax.set_title(name, fontsize=10)
+        ax.set_title("\n".join(textwrap.wrap(name, 34)), fontsize=9.5)
         ax.legend(fontsize=9)
     axes[0][0].set_ylabel("$\\Omega_{os}$ [kJ/mol per unit cell]")
     axes[0][0].annotate("grey lines: measured transitions\n(0.25 and ~6 bar)", xy=(0.04, 0.88),

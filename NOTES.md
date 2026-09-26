@@ -731,7 +731,9 @@ value (~0.85 A, as in SABVUN and in the np file) but unphysically short, a defec
 that refinement. Its mu-OH dipole is **32 % weaker than its np partner's**, at exactly
 the site Bourrelly identifies as the first CO2 binding site. The pair is consistent in
 charge *method* but not in the geometry that matters most. The four-point lp-PACMAN vs
-lp-DDEC comparison (0.1, 1, 10, 30 bar) measures the size of that effect.
+lp-DDEC comparison (0.1, 1, 10, 30 bar) measures the size of that effect: **2.3 % at
+0.1 bar, 1.2 % at saturation, sign-flipping** -- small, resolved, and not large enough to
+change any conclusion. See 5.6(e).
 
 ### 5.3 Supercell and cut-off (np)
 12.0 A cut-off, tail corrections, Ewald 1e-6, every perpendicular width > 24 A.
@@ -798,11 +800,12 @@ the stated Bourrelly value, and the scan is reported in full.
 
 **OUR SIMULATED PARAMETERS.**
 
-| parameter set | lp -> np | np -> lp |
-|---|---|---|
-| experiment (Coudert) | 0.273 bar | 3.97 bar |
-| **simulated lp + experimental np** | **none** | **none** |
-| **simulated lp + simulated np** | **none** | **none** |
+| parameter set | charge sets | lp -> np | np -> lp |
+|---|---|---|---|
+| experiment (Coudert) | - | 0.273 bar | 3.97 bar |
+| **simulated lp + experimental np** | SABVUN-DDEC | **none** | **none** |
+| **simulated lp + simulated np** | DDEC + PACMAN, **mixed** | **none** | **none** |
+| **simulated lp + simulated np** | PACMAN + PACMAN, **consistent** | **none** | **none** |
 
 **Our lp force field erases the breathing window entirely.** The full-range Langmuir fit
 of our lp isotherm gives K = 2.21e-4 mol/kg/Pa, **8.5x the experimental lp value**, so
@@ -812,9 +815,152 @@ window exists for Delta F <= 4.7 kJ/mol). This is the quantitative answer to "ho
 force-field error propagate into the predicted breathing transition": a factor ~4-8 in
 the lp Henry/Langmuir constant does not shift the transitions, it **removes them**.
 
-Figure: `results/osmotic_construction.png`, three panels (experiment; simulated lp +
-experimental np; both simulated), transitions marked, measured transitions shown as grey
+**Charge-set consistency (added after the lp-PACMAN run, 5.6).** The np file is
+PACMAN-DDEC6, so the third row above pairs it with a SABVUN-DDEC lp: the two phases carry
+charges from different files. The fourth row repairs that with the lp-PACMAN isotherm.
+It changes nothing -- K(lp, PACMAN) = 2.55e-4 against 2.21e-4 mol/kg/Pa, *further* from
+experiment, so Omega_lp lies even lower. The erasure of the breathing window is a
+property of the force field, not an artefact of mixing charge sets.
+
+Figure: `results/osmotic_construction.png`, four panels (experiment; simulated lp +
+experimental np; both simulated with mixed charge sets; both simulated with the
+consistent PACMAN pair), transitions marked, measured transitions shown as grey
 reference lines.
+
+### 5.6 Charge-model sensitivity, and the Phase 5 checkpoint (2026-09-26)
+
+Every Phase 5 simulation is finished. This section is the checkpoint: what the runs
+established, and what they did not.
+
+**(a) The np file is the closed form -- confirmed by helium, not by assumption.**
+Same probe, same force field, same Widom procedure, 298 K, in all three cells:
+
+| structure | theta_He | pore volume [cm^3/g] |
+|---|---|---|
+| lp, SABVUN-DDEC | **0.711510 +/- 0.000385** | 0.727 |
+| lp, 2019 SI PACMAN | **0.709397 +/- 0.000265** | 0.725 |
+| np, 2019 SI PACMAN | **0.121044 +/- 0.000200** | 0.083 |
+
+The two lp cells agree to **0.3 %**, so the helium probe sees one lp pore regardless of
+charge set (helium carries no charge; the 0.3 % is the difference between the two lp
+*geometries*). The np cell is **5.9x smaller in accessible volume**. That is the
+structural confirmation that the CoRE 2024 SI file is the closed phase, independent of
+the lattice argument in 5.1.
+
+*Provenance caveat, recorded in the CSVs.* The lp-PACMAN helium run finished at 08:06,
+after its GCMC batch had started at 06:54, so those GCMC inputs carry
+`HeliumVoidFraction 0.7115` (the SABVUN value) rather than 0.709397. Absolute loading
+does not use it at all; the excess column is built on a void fraction 0.3 % too high,
+i.e. 0.3 % of a correction that is itself ~3 % of the loading at 30 bar. Both numbers now
+travel with every isotherm CSV as `theta_He` (what RASPA used) and `theta_He_widom` (what
+we measured), and `scripts/isotherm.py` prints a NOTE when they differ. Nothing in 5.6 or
+5.5 uses the excess column.
+
+**(b) The np isotherm and its Langmuir fit.** 10 points, 0.01-10 bar, 20,000 + 200,000
+cycles each, 4 concurrent jobs, 23,970 s wall (`results/isotherm_MIL53_np_CO2_304K.png`):
+
+| p [bar] | 0.01 | 0.1 | 1 | 5 | 10 |
+|---|---|---|---|---|---|
+| CO2 per formula cell | 0.00022 | 0.00233 | 0.02326 | 0.11345 | **0.21437** |
+
+Langmuir over all 10 points: **N_max = 5.27 mol/kg (4.39 molec/cell), b = 5.24e-8 /Pa,
+K = 2.763e-7 mol/kg/Pa**. The fit passes its monotonicity and boundary checks, but it is
+**effectively a straight line**: at the top point bP = 0.052, so the data never approach
+N_max and the fit does not constrain N_max and b separately -- only their product K.
+Quote K, not N_max(np), from this fit. Against Coudert's experimental K_np = 9.0e-5, the
+simulated np is **326x too small**, which is 5.4's result restated by the fit.
+
+**(c) Coudert validation: the construction is sound.** With Coudert's own parameters
+(K_lp = 2.6e-5, K_np = 9.0e-5 mol/kg/Pa, N_max(np) = 3.0 molec/cell assumed from
+Bourrelly, Delta F_host = 2.5 kJ/mol per cell):
+
+| | lp -> np | np -> lp |
+|---|---|---|
+| this construction, ideal-gas V_m | **0.273 bar** | **3.97 bar** |
+| this construction, Peng-Robinson V_m | 0.274 bar | 4.00 bar |
+| Coudert 2008 | 0.3 bar (microcalorimetry 0.25) | 5-6 bar |
+
+**The closing transition is recovered: 0.273 against 0.3 bar, 9 % low.** The reopening
+is recovered in the right decade but **30 % low: 3.97 against 5-6 bar.** Peng-Robinson
+moves both by < 1 %, so the ideal-gas form in Coudert eq. 11 is not the cause. The
+sensitivity scan locates it: across Delta F = 1-4 kJ/mol and N_max(np) = 2.5-4.0 the
+closing stays in 0.08-0.65 bar while the reopening moves over 2.6-10.2 bar, so **the
+reopening is controlled by the assumed N_max(np)** -- the one input we do not have from
+the literature. At N_max(np) = 3.5 it lands at 5.8 bar, inside Coudert's range. Nothing
+was tuned: the base case uses the stated Bourrelly value and the full scan is in
+`results/osmotic_sensitivity.csv`.
+
+So the machinery reproduces the published result to 9 % on closing and a factor 1.3 on
+reopening, with the residual traced to a stated assumption rather than to the method.
+
+**(d) With our simulated isotherms, for both charge pairs: no transition at all.**
+
+| lp branch from | np branch from | K_lp [mol/kg/Pa] | lp -> np | np -> lp |
+|---|---|---|---|---|
+| Coudert, experiment | Coudert, experiment | 2.6e-5 | 0.273 bar | 3.97 bar |
+| simulated, SABVUN-DDEC | Coudert, experiment | 2.21e-4 | **none** | **none** |
+| simulated, SABVUN-DDEC | simulated, PACMAN (**mixed**) | 2.21e-4 | **none** | **none** |
+| simulated, PACMAN | simulated, PACMAN (**consistent**) | 2.55e-4 | **none** | **none** |
+
+Omega_lp lies below Omega_np at every pressure in all three simulated rows, and **no
+Delta F_host between 0 and 6 kJ/mol restores a window** (with experimental parameters one
+exists for Delta F <= 4.7 kJ/mol). Repairing the charge-set inconsistency does not help
+and slightly hurts: the consistent PACMAN pair has K_lp = 2.55e-4, *further* from the
+experimental 2.6e-5 than the DDEC lp is. **A factor 8.5 in the lp Langmuir constant does
+not shift the transitions, it removes them.**
+
+**(e) Why four lp-PACMAN points were enough.** The PACMAN pair was adopted in 5.2 to be
+charge-consistent, with the defect noted: the PACMAN lp file has an O-H bond of 0.661 A
+and a mu-OH dipole 32 % weaker than its np partner's, at the first CO2 binding site. Four
+pressures straddling the branch, identical force field, box, cut-off and Ewald precision
+-- only the `_atom_site_charge` column differs (`results/charge_model_comparison.png`):
+
+| p [bar] | lp SABVUN-DDEC [mol/kg] | lp PACMAN [mol/kg] | change [%] | significant at 95 %? |
+|---|---|---|---|---|
+| 0.1 | 2.025 +/- 0.032 | 1.979 +/- 0.032 | **-2.28 +/- 2.21** | yes |
+| 1 | 8.211 +/- 0.024 | 8.195 +/- 0.027 | -0.19 +/- 0.44 | no |
+| 10 | 10.964 +/- 0.063 | 11.089 +/- 0.074 | +1.13 +/- 0.89 | yes |
+| 30 | 11.773 +/- 0.051 | 11.916 +/- 0.117 | +1.22 +/- 1.08 | yes |
+
+Largest deviation **2.28 %**, mean 1.21 %, and the sign flips with pressure: the weaker
+PACMAN mu-OH dipole costs loading at low coverage, where that site dominates, and gains a
+little at saturation, where packing does. Both effects are small and three of the four are
+statistically resolved -- this is a real, measured, *small* charge effect, not noise.
+
+**Decision, stated in advance (5 % threshold) and met:** four points stand, and the
+construction uses the **12-point SABVUN-DDEC Langmuir fit** for the lp branch. Reason: the
+charge set moves the branch by less than the fit's own spread, while the fit *window*
+moves K more than the charge set does --
+
+| ratio of Langmuir K | value | what it isolates |
+|---|---|---|
+| K(PACMAN, 4 pts) / K(DDEC, same 4 pts) | **0.973** | the charge effect: 2.7 %, and *downward* |
+| K(DDEC, 4 pts) / K(DDEC, 12 pts) | **1.187** | the fit window alone: 19 % |
+| K(PACMAN, 4 pts) / K(DDEC, 12 pts) | 1.155 | the two confounded -- do not quote this one |
+
+Fitting 4 points over 0.1-30 bar instead of 12 over 0.01-50 bar changes K by 19 %, seven
+times the charge effect. Running the other eight PACMAN pressures would buy a 2.7 %
+correction to a quantity already 8.5x from experiment, so it was not run. Both fits are
+carried through the construction anyway (row 3 vs row 4 above), and they agree: no
+transition either way.
+
+**What Phase 5 did not settle.** N_max(np) from experiment -- the input the reopening
+pressure is most sensitive to -- is still an assumption taken from Bourrelly's 0.75 CO2
+per OH. And the rigid np isotherm is not a physical np branch (5.4), so the simulated np
+row above tests the machinery, not the material.
+
+**Reproduce:**
+
+```bash
+scripts/status.sh                                     # state of every run
+python scripts/isotherm.py --tag np --phase np --z 2 \
+       --theta-he 0.121044 --no-reference --fit-window 0 \
+       --out-prefix isotherm_MIL53_np_CO2_304K
+python scripts/isotherm.py --tag lp_pacman --theta-he 0.709397 --no-reference \
+       --out-prefix isotherm_MIL53_lp_pacman_CO2_304K
+python scripts/charge_model_compare.py                # the 5 % decision, table (e)
+python scripts/osmotic.py                             # validation (c) + transitions (d)
+```
 
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)

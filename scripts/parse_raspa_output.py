@@ -51,6 +51,10 @@ def parse_conditions(text):
         "n_unit_cells": n_uc,
         "framework_mass_box_g_per_mol": box_mass,
         "framework_mass_uc_g_per_mol": box_mass / n_uc if box_mass else None,
+        # The void fraction RASPA ACTUALLY used for the excess column, echoed in its
+        # header. This is the one in simulation.input, which is not necessarily the
+        # Widom value we later measured -- see isotherm.py, which flags a mismatch.
+        "theta_He_used": _first(rf"Helium void fraction:\s*({FLOAT})", text),
         "cycles_init": _first(r"Number of initializing cycles:\s*(\d+)", text, int),
         "cycles_prod": _first(r"^Number of cycles:\s*(\d+)", text, int),
         "finished": "Simulation finished" in text,

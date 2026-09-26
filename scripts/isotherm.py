@@ -74,13 +74,30 @@ def main(argv=None):
     ap.add_argument("--z", type=int, default=1,
                     help="formula cells per RASPA unit cell (np file cell holds 2)")
     ap.add_argument("--out-prefix", default="isotherm_MIL53_lp_CO2_304K")
+    ap.add_argument("--phase", choices=("lp", "np"), default="lp",
+                    help="which MIL-53 phase this run is, for the title and the caption")
+    ap.add_argument("--fit-window", type=float, default=LP_WINDOW_BAR,
+                    help="lowest pressure [bar] included in the Langmuir overlay. The default is "
+                         "the lp window (P >= 9 bar, where the real material is fully open); the np "
+                         "branch has no such window, so pass 0 to fit all of it.")
     a = ap.parse_args(argv)
 
     df = collect(a.tag)
     if a.z != 1:   # RASPA reports per FILE cell; convert to per formula cell
         for c in [c for c in df.columns if "molec_uc" in c and not c.endswith("rel_err")]:
             df[c] = df[c] / a.z
-    df["theta_He"] = a.theta_he
+    # theta_He: RASPA computed the excess column with the value in simulation.input.
+    # --theta-he is the Widom value we want on record. They can differ when the helium
+    # run finished after the GCMC started, so carry BOTH and say which did what.
+    df["theta_He"] = df["theta_He_used"]          # what the excess column is built on
+    df["theta_He_widom"] = a.theta_he             # what we measured
+    mism = df[(df.theta_He_used - a.theta_he).abs() > 1e-6]
+    if len(mism):
+        used = sorted(set(mism.theta_He_used.round(8)))
+        print(f"  NOTE: RASPA built the excess column with theta_He = {used} (from simulation.input), "
+              f"not the Widom value {a.theta_he} passed here.")
+        print(f"        Absolute loading is unaffected. The excess correction shifts by "
+              f"{100 * abs(used[0] - a.theta_he) / a.theta_he:.2f} % of itself; both values are in the CSV.")
     df["formula_cells_per_raspa_cell"] = a.z
     ref = None if a.no_reference else load_reference()
     out = ROOT / "results"
@@ -89,14 +106,15 @@ def main(argv=None):
             "absolute_mol_kg", "absolute_mol_kg_err95", "absolute_molec_uc", "absolute_molec_uc_err95",
             "absolute_molec_uc_rel_err",
             "excess_mol_kg", "excess_mol_kg_err95", "excess_molec_uc", "excess_molec_uc_err95",
-            "excess_molec_uc_rel_err", "bulk_density_kg_m3", "theta_He", "M_uc_g_per_mol",
+            "excess_molec_uc_rel_err", "bulk_density_kg_m3", "theta_He", "theta_He_widom", "M_uc_g_per_mol",
             "acc_insertion", "accepted_insertion", "acc_deletion", "accepted_deletion",
             "acc_reinsertion", "acc_translation", "acc_rotation", "cycles_init", "cycles_prod",
             "n_warnings", "missing_vdw_pairs", "file"]
     csv = out / f"{a.out_prefix}.csv"
-    header = (f"# CO2 in MIL-53(Al) lp, rigid framework, GCMC (RASPA2 2.0.50), T = {df.T_K.iloc[0]:g} K\n"
+    header = (f"# CO2 in MIL-53(Al) {a.phase}, rigid framework, GCMC (RASPA2 2.0.50), T = {df.T_K.iloc[0]:g} K\n"
               f"# absolute and excess loading; 1 molecule/uc = {MOLKG_PER_UC:.4f} mol/kg (M_uc = {M_UC} g/mol)\n"
-              f"# excess uses the helium void fraction theta_He = {a.theta_he} (Widom He, 298 K, eps/k 10.9 K, sigma 2.64 A)\n"
+              f"# excess uses theta_He = {df.theta_He.iloc[0]:g}, the value RASPA was given in simulation.input\n"
+              f"# theta_He_widom = {a.theta_he:g} is the measured Widom value (He, 298 K, eps/k 10.9 K, sigma 2.64 A)\n"
               f"# loadings per FORMULA cell (M = {M_UC} g/mol, Z = 4); RASPA unit cell holds {a.z} formula cell(s)\n"
               f"# errors are RASPA's 95 % confidence half-widths (5 blocks, t = 2.776)\n")
     with open(csv, "w") as fh:
@@ -139,14 +157,15 @@ def main(argv=None):
     # Langmuir curves (fitted over P >= 9 bar; see scripts/langmuir.py)
     try:
         from langmuir import fit_langmuir
-        w = df[df.p_bar >= LP_WINDOW_BAR]
+        w = df[df.p_bar >= a.fit_window]
         if len(w) >= 3:
             fs = fit_langmuir(w.p_bar, w.absolute_mol_kg, w.absolute_mol_kg_err95 / 2.776)
             pp = np.logspace(np.log10(df.p_bar.min()), np.log10(df.p_bar.max()), 300)
             if fs["ok"]:
                 ax.plot(pp, fs["N_max"] * fs["b_per_bar"] * pp / (1 + fs["b_per_bar"] * pp),
                         color=SIM["color"], lw=1.1, ls=":", zorder=1,
-                        label=f"Langmuir fit, this work (absolute, P $\\geq$ {LP_WINDOW_BAR:g} bar)")
+                        label=(f"Langmuir fit, this work (absolute, P $\\geq$ {a.fit_window:g} bar):\n"
+                               f"N$_{{max}}$ = {fs['N_max']:.3g} mol/kg, K = {fs['K_mol_kg_Pa']:.3g} mol/kg/Pa"))
             if ref is not None:
                 er = ref[ref.in_lp_window]
                 fe = fit_langmuir(er.pressure_bar, er.loading_mmol_per_g, np.full(len(er), 0.05))
@@ -160,14 +179,20 @@ def main(argv=None):
     ax.set_ylabel("Loading [mol/kg  =  mmol/g]")
     sec = ax.secondary_yaxis("right", functions=(lambda x: x / MOLKG_PER_UC, lambda x: x * MOLKG_PER_UC))
     sec.set_ylabel("Loading [molecules / unit cell]")
-    ax.set_title(f"CO$_2$ in MIL-53(Al) lp, rigid framework, {df.T_K.iloc[0]:g} K")
+    ax.set_title(f"CO$_2$ in MIL-53(Al) {a.phase}, rigid framework, {df.T_K.iloc[0]:g} K")
     ax.legend(fontsize=8.5, loc="upper left")
-    fig.text(0.01, -0.06,
-             "Rigid lp framework: this is the virtual lp branch, so it is comparable with experiment only "
-             f"for P $\\geq$ {LP_WINDOW_BAR:g} bar,\nwhere the real material is fully open. Below ~5 bar the real solid is np "
-             "(Coudert 2008). Reference points are excess\n(assumed: manometry, convention not stated by the source) and are "
-             "never converted; the band shows our absolute-excess gap.\nError bars: 95 % CI.",
-             fontsize=7.5, va="top")
+    captions = {
+        "lp": ("Rigid lp framework: this is the virtual lp branch, so it is comparable with experiment only "
+               f"for P $\\geq$ {LP_WINDOW_BAR:g} bar,\nwhere the real material is fully open. Below ~5 bar the real solid is np "
+               "(Coudert 2008). Reference points are excess\n(assumed: manometry, convention not stated by the source) and are "
+               "never converted; the band shows our absolute-excess gap.\nError bars: 95 % CI."),
+        "np": ("Rigid np framework, the EMPTY dehydrated np cell. This is NOT the physical np branch: the real np phase under "
+               "CO$_2$ is expanded,\nwhich is what breathing means. The cell is too tight for CO$_2$ (LCD 2.83 A vs 3.3 A kinetic "
+               "diameter, theta$_{He}$ = 0.121),\nso the isotherm stays linear to 10 bar and reaches 0.21 molecules/cell against a "
+               "literature np capacity of ~3.0.\nLoadings are per FORMULA cell: the file cell is a genuine superstructure holding 2 "
+               "(NOTES.md 5.1). Error bars: 95 % CI."),
+    }
+    fig.text(0.01, -0.06, captions[a.phase], fontsize=7.5, va="top")
     fig.savefig(out / f"{a.out_prefix}.png")
     print(f"wrote results/{a.out_prefix}.png")
     return 0
