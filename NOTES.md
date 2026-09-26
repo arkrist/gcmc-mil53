@@ -1336,6 +1336,58 @@ rather than cancel. **Decision: rerun PACMAN v1.1 on the relaxed framework befor
 GCMC.** Cheap, and it removes a systematic error at the one site that dominates np
 binding.
 
+**5.7.7 The answer, from the production force field** (`scripts/insertion_energy.py`,
+200,000 random rigid-CO2 insertions per cell, UFF + TraPPE, Lorentz-Berthelot, 12 A LJ
+cut-off, CIF charges, full Ewald of the guest-host term; validated on lp against RASPA's
+own Widom run, <U> -22.21 vs -22.84 kJ/mol, K_H ratio 0.767).
+
+| | frac(U<0) | frac(U<-20) | U_min | <U>_boltz | Rosenbluth | K_H [mol/kg/Pa] |
+|---|---|---|---|---|---|---|
+| lp | 15.23 % | 3.31 % | -31.57 | -22.21 | 354.6 | 1.433e-4 |
+| np, original | 0.068 % | 0.0025 % | -26.18 | -23.06 | 0.479 | 1.296e-7 |
+| **np, CO2 cell, relaxed** | **0.848 %** | **0.359 %** | **-40.73** | **-36.26** | **1374.1** | **4.218e-4** |
+
+**Changing the structure alone raises K_H by a factor of 3,254.** Nothing else changed:
+same force field, same charges, same cut-off, same Ewald, same sampler, same seed.
+
+**And the sign of the error flips.** Against Coudert's experimental K_np = 9.0e-5:
+
+| | vs experiment | bias-corrected (divide by the sampler's 0.767 lp bias) |
+|---|---|---|
+| np, original | **694x too SMALL** | 532x too small |
+| **np, CO2 cell** | **4.69x too LARGE** | 6.11x too large |
+| lp, same force field, vs K_lp = 2.6e-5 | 5.51x too large | 7.19x too large |
+
+**This is the result the whole of 5.6b and 5.7 was built to get.** The np deficit was
+694x. In the experimental CO2-loaded cell it becomes a 4.7x *excess* -- which is the same
+size, the same sign and the same kind of error the identical force field makes on the lp
+phase (5.5x). The 326-694x discrepancy was **not** a force-field failure. It was the
+wrong structure, and once the structure is right the residual collapses onto the
+low-coverage over-binding already characterised for lp ("What a rigid-framework GCMC can
+and cannot reproduce", K_sim/K_exp = 3.95 on the matched Langmuir procedure).
+
+**Why the new cell binds so hard.** Favourable sites are still 18x rarer than in lp
+(0.85 % against 15.2 %), but where they exist they are **much deeper**: U_min -40.7
+against lp's -31.6, and <U>_boltz -36.3 against -22.2 kJ/mol. Tighter confinement means
+more framework atoms within range of each CO2, so the well is deeper even though there is
+less room. That is why the Rosenbluth factor is 1374 against lp's 355 despite the
+scarcity of sites. It is also, exactly, the regime in which a generic UFF + point-charge
+model over-binds worst, which is consistent with the residual 4.7x being force-field
+error rather than structural.
+
+**Caveat, and it points the right way.** These numbers use the PACMAN charges of the
+ORIGINAL np geometry, carried over unchanged -- the thing 5.7.6 says not to do. CO2 binds
+through its quadrupole to the mu-OH dipole, and that dipole is inflated about 8 % by the
+0.893 -> 0.967 A bond change. Correcting it should **reduce** the binding and so **reduce
+the 4.7x overshoot**, moving the result towards experiment rather than away. So 4.7x is an
+upper bound on the overshoot, and the PACMAN rerun is worth doing before any number here
+is quoted as final.
+
+**Status of step B.** Held until the charges are redone. The quantity that will settle it
+is a RASPA Widom run in this cell on freshly-charged geometry, then the 10-point isotherm
+and `osmotic.py` with the charge-consistent pair, primary cell as Dundar 2017 and
+sensitivity at the 0.950-scaled volume.
+
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
 
