@@ -110,6 +110,8 @@ for f in isotherm_MIL53_lp_CO2_304K.csv \
          isotherm_MIL53_np_CO2_304K.csv \
          isotherm_MIL53_lp_pacman_CO2_304K.csv \
          charge_model_comparison.csv \
+         insertion_energy.csv \
+         insertion_energy.png \
          langmuir_fits.csv \
          osmotic_sensitivity.csv \
          osmotic_construction.png; do

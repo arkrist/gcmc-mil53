@@ -949,6 +949,161 @@ pressure is most sensitive to -- is still an assumption taken from Bourrelly's 0
 per OH. And the rigid np isotherm is not a physical np branch (5.4), so the simulated np
 row above tests the machinery, not the material.
 
+### 5.6b HYPOTHESIS (2026-09-27): the np file is the wrong np
+
+**Status: stated, partially tested. Steps 1-3 below are done; nothing here is settled
+until an actual CO2-loaded np structure is in hand.**
+
+**The hypothesis.** K_np is 326x below Coudert's experimental 9.0e-5 mol/kg/Pa (from the
+Langmuir fit of the np isotherm, 5.6(b); 340x from the initial slope, 5.4). That is far
+too large to be a force-field error -- the same force field gets N_max(lp) right to 0.5 %
+and K_lp wrong by only 8.5x. The proposal is that it is not a force-field error at all:
+
+> `structures/MIL-53_Al_np.cif` is the **hydrated lt** form (Loiseau 2004 geometry,
+> 945.8 A^3 per formula cell) with the water stripped out. The narrow-pore form that CO2
+> actually induces is a **different, wider** structure. If CO2 simply does not fit in the
+> dehydrated lt channel, the near-empty isotherm is a **structure** problem, not a
+> **force-field** problem, and no amount of force-field work would fix it.
+
+**Step 1 -- Widom CO2 insertion in the np cell.** `runs/henry_widom_CO2_np/`, same force
+field, charges, Ewald and temperature as the isotherm; 200,000 cycles, RUNNING (about
+5 h; values below are its block average at cycle 10,000 and are already stable against
+the GCMC slope).
+
+| | lp (SABVUN-DDEC) | np (PACMAN) |
+|---|---|---|
+| K_H [mol/kg/Pa] | 1.869e-4 +/- 1.6e-6 | **2.678e-7** |
+| Widom Rosenbluth factor <exp(-beta U)> | 461.6 | **0.9894** |
+| <U_gh> [kJ/mol] | -22.83 | **-25.91** |
+| excess chemical potential [kJ/mol] | -15.51 | **+0.03** |
+
+The np K_H agrees with the two independent estimates we already had: the GCMC initial
+slope, 2.8e-7 (5.4), and the Langmuir fit of the np isotherm, 2.763e-7 (5.6(b)). So the
+near-empty np isotherm is not a GCMC sampling artefact.
+
+**The decisive number is the pair (Rosenbluth, <U_gh>).** In the np cell CO2 binds
+*more strongly* than in lp -- -25.91 against -22.83 kJ/mol, as tighter confinement
+should -- yet the Rosenbluth factor is **0.989 instead of 462**, and the excess chemical
+potential is **zero to 0.03 kJ/mol**. The framework is thermodynamically invisible to
+CO2: the attraction at the few places a molecule fits exactly cancels the entropic cost
+of everywhere it does not. **This is an availability problem, not an energy problem.**
+
+**Step 1b -- the distribution of insertion energies** (`scripts/insertion_energy.py`,
+`results/insertion_energy.png`). RASPA prints only the Boltzmann average, so the
+distribution was sampled separately: 200,000 uniformly random positions and orientations
+of rigid TraPPE CO2 per cell, same UFF parameters, same mixing, same 12 A LJ cut-off,
+same CIF charges, **full Ewald** of the guest-host term.
+
+*Validated before use, twice.* The Ewald sum is alpha-independent to 6 digits
+(alpha = 0.22 to 0.34 1/A), and on the lp cell the sampler reproduces RASPA's own Widom
+run: <U> = -22.21 against -22.83 kJ/mol, K_H ratio 0.77. *A first version with a plain
+truncated 12 A Coulomb sum failed this validation catastrophically* -- individual pair
+terms in this framework reach +-330 kJ/mol and the spherical truncation left a
+-655 kJ/mol residual, inventing wells 30x deeper than anything real. It was discarded,
+not patched; the episode is recorded because a truncated Coulomb sum would have produced
+a confident and completely wrong answer here.
+
+| | lp | np | ratio |
+|---|---|---|---|
+| insertions with U < 0 | 15.2 % | **0.068 %** | **224x fewer** |
+| insertions with U < -10 kJ/mol | 13.5 % | **0.025 %** | **540x fewer** |
+| insertions with U < -20 kJ/mol | 3.31 % | **0.0025 %** (5 of 200,000) | **1320x fewer** |
+| deepest well found | -31.6 kJ/mol | **-26.2 kJ/mol** | comparable |
+| Boltzmann-weighted <U> | -22.2 kJ/mol | -23.1 kJ/mol | comparable |
+
+**Answer to "are there any favourable sites at all": yes, a handful, and they are nearly
+as deep as the lp sites -- there are just 200-1300x fewer of them.** The np distribution
+is the lp distribution with its attractive lobe almost entirely removed and the
+overlap spike left behind.
+
+**Step 2 -- channel geometry** (Zeo++ 0.4.4 `network -ha`, conda-forge `zeopp-lsmo`, a
+separate environment so the validated RASPA env is untouched; default Zeo++ radii, the
+same convention CoRE MOF reports):
+
+| structure | LCD (D_i) | **PLD (D_f)** | accessible volume, 1.65 A probe (CO2-sized) | 1.30 A probe (He-sized) |
+|---|---|---|---|---|
+| lp, SABVUN-DDEC | 7.014 A | **6.771 A** | 675 A^3, 0.478 of cell, 0.488 cm^3/g | 715 A^3, 0.507 |
+| lp, PACMAN | 7.045 A | **6.930 A** | - | - |
+| np, PACMAN | 2.828 A | **2.516 A** | **0 (zero)** | **0 accessible**; 65.9 A^3 (3.5 %) in isolated, non-percolating pockets |
+
+Against CO2's kinetic diameter of **3.30 A**: the np pore-limiting diameter is **2.52 A**,
+and even the largest included sphere, 2.83 A, is smaller than the molecule. **Zeo++ finds
+exactly zero probe-accessible volume in the np cell for a CO2-sized probe** -- and zero
+*percolating* volume even for a helium-sized 1.30 A probe, only isolated pockets. The lp
+cell is wide open on the same test. This is the hard-sphere statement of what the Widom
+Rosenbluth factor said thermodynamically.
+
+*One honest caveat.* Zeo++ is hard-sphere; the GCMC is not. theta_He = 0.121 from the
+Widom helium run is larger than Zeo++'s 3.5 % of non-percolating pocket volume because a
+soft LJ helium samples regions a hard sphere cannot enter, and Widom does not require a
+percolating path. The two methods are measuring different things and both say the same
+thing about CO2.
+
+**Step 3 -- does a CO2-loaded np structure exist?** What could be established from
+sources that could actually be opened:
+
+| structure | V per formula cell | source | verified? |
+|---|---|---|---|
+| MIL-53(**Cr**) lp | 1486 A^3 | Llewellyn 2008, JACS 130, 12808; tabulated again in Langmuir 2011 | yes, open-access postprint |
+| MIL-53(**Cr**) np, **H2O**-induced | 1012 A^3 | same | yes |
+| MIL-53(**Cr**) np, reference V_0 in the stress model | 1046 A^3 | Langmuir 2011, DOI 10.1021/la200094x (HAL postprint) | yes |
+| MIL-53(**Cr**) np, **CO2**-loaded | **1072 A^3** | Salles et al., Angew. Chem. Int. Ed. 2008, 47, 8487, DOI 10.1002/anie.200803067, in situ XRPD | **NO** -- paywalled (403), taken from secondary summaries |
+| MIL-53(**Al**) np, **empty**, low-T | 864 A^3 | Liu et al., JACS 2008, 130, 11813 | cited in an open-access source, primary not opened |
+| MIL-53(**Al**) lt, hydrated geometry = **our file** | **945.8 A^3** | Loiseau 2004 / CoRE 2024 SI | yes, measured from the CIF |
+| MIL-53(**Al**) lp = our production cell | 1412 A^3 | SABVUN | yes, measured from the CIF |
+
+**No CO2-loaded MIL-53 structure was found in any form we can download.** Specifically:
+
+* **CoRE MOF cannot contain one, by construction.** Its ASR and FSR variants are defined
+  by *removing* solvent and guests. The Phase-2 scan of 23,845 CoRE 2014/2019 files,
+  2,932 DDEC files and 2,665 CoRE 2024 SI files (2.2) found no np MIL-53(Al) at all
+  beyond the file we use. Re-checking CoRE for a CO2-loaded cell is not worth doing.
+* **Serre et al., Adv. Mater. 2007, 19, 2246** -- the in situ XRD study of CO2-induced
+  breathing -- could not be opened (publisher and mirrors both returned 403), so neither
+  its refined cells nor whether it deposited anything could be checked.
+* **Ramsahye et al., J. Phys. Chem. C 2008, 112, 514** is a DFT study of adsorption
+  *sites*; also paywalled, and a DFT-optimised cell is not a deposited structure.
+* A 2025 in situ 3D electron diffraction study of MIL-53(Cr) and MIL-53(Ga)
+  (CCDC 2470910-2470924) covers hydrated, anhydrous and intermediate states **under
+  vacuum only** -- no CO2.
+
+**What the numbers say about the hypothesis.** Al cells run about 5 % smaller than the
+corresponding Cr cells (lp: 1412 / 1486 = 0.950). Scaling on that ratio:
+
+| Cr reference | scaled to Al | our np file | our file is |
+|---|---|---|---|
+| np, H2O-induced, 1012 A^3 | 961 A^3 | 945.8 A^3 | **1.6 % smaller -- a match** |
+| np, CO2-loaded, 1072 A^3 (unverified) | 1018 A^3 | 945.8 A^3 | **7.7 % smaller** |
+
+**The hypothesis survives its first three tests.** Our file sits within 1.6 % of the
+hydrated-np volume and about 8 % below the CO2-loaded np volume, and 8 % of volume in
+this material is the difference between a 2.5 A bottleneck and a passable channel. But
+the CO2-loaded number itself is the one figure that could not be verified from a primary
+source, and the whole argument rests on it, so **it is not yet settled.**
+
+**Step 4 -- if only a Cr np-CO2 structure exists (PROPOSAL ONLY, NOT DONE).** Two routes,
+neither run, for a decision:
+
+1. **Substitute and relax.** Take the Cr np-CO2 cell, replace Cr by Al, and relax the
+   framework at fixed CO2 loading and fixed cell, then relax the cell. *For:* keeps the
+   CO2-induced channel shape, which is the thing we lack. *Against:* needs a DFT or a
+   flexible force field we do not have, is a multi-day job, and the relaxed result is
+   then a structure of our making rather than a measurement -- it must never be compared
+   with experiment as if it were one.
+2. **Scale the lattice.** Take our np file and scale it isotropically, or along the
+   lozenge short axis only, to the Al-equivalent CO2-loaded volume (~1018 A^3 on the
+   numbers above). *For:* an hour's work, needs nothing we do not have, and is honest if
+   labelled as a constructed cell. *Against:* breathing in MIL-53 is a **shear** of the
+   lozenge, not an isotropic dilation, so isotropic scaling would put the atoms in the
+   wrong places even at the right volume; the anisotropic version needs the Cr np-CO2
+   cell parameters, which are exactly what is paywalled.
+
+A third option worth weighing before either: **get the Serre 2007 and Salles 2008 papers
+through institutional access** and read the refined cells directly. That is cheaper than
+both routes above and removes the one unverified number the argument depends on.
+
+**Decision required.** Nothing further will be built until this is decided.
+
 **Reproduce:**
 
 ```bash
@@ -960,6 +1115,9 @@ python scripts/isotherm.py --tag lp_pacman --theta-he 0.709397 --no-reference \
        --out-prefix isotherm_MIL53_lp_pacman_CO2_304K
 python scripts/charge_model_compare.py                # the 5 % decision, table (e)
 python scripts/osmotic.py                             # validation (c) + transitions (d)
+python scripts/insertion_energy.py                    # 5.6b step 1b, insertion-energy distributions
+network -ha -res out.res structures/MIL-53_Al_np.cif  # 5.6b step 2 (Zeo++, env "zeopp")
+network -ha -volpo 1.65 1.65 50000 out.volpo structures/MIL-53_Al_np.cif
 ```
 
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
