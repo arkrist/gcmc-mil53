@@ -88,7 +88,7 @@ def min_contact(frac, M):
     return float(r.min()), np.unravel_index(int(np.argmin(r)), r.shape)
 
 
-BOND_MAX = {("Al", "O"): 2.20, ("O", "H"): 1.20, ("C", "O"): 1.60,
+BOND_MAX = {("Al", "O"): 2.20, ("H", "O"): 1.20, ("C", "O"): 1.60,   # keys MUST be sorted
             ("C", "C"): 1.70, ("C", "H"): 1.25}
 
 

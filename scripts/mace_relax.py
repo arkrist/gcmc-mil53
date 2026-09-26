@@ -97,7 +97,14 @@ def relax_guests_only(atoms, calc, n_frame, fmax=0.2, steps=200, logfile=None):
     return f0, f1, opt.get_number_of_steps()
 
 
-def relax(atoms, calc, fmax=0.05, steps=400, logfile=None, traj=None, constant_volume=False):
+def relax(atoms, calc, fmax=0.05, steps=400, logfile=None, traj=None,
+          constant_volume=False, fixed_cell=False):
+    """Relax. fixed_cell=True moves atoms only; otherwise the cell is a degree of freedom.
+
+    fixed_cell is what 5.7 needs: the cell comes from experiment (Serre 2007) and must
+    not move, while the internal coordinates -- strained 2-4 % by the fractional-
+    coordinate transplant -- have to be repaired.
+    """
     from ase.filters import FrechetCellFilter
     from ase.optimize import FIRE
     atoms.calc = calc
@@ -105,8 +112,8 @@ def relax(atoms, calc, fmax=0.05, steps=400, logfile=None, traj=None, constant_v
     e0 = atoms.get_potential_energy()
     f0 = float(np.abs(atoms.get_forces()).max())
     t0 = time.time()
-    opt = FIRE(FrechetCellFilter(atoms, constant_volume=constant_volume),
-               logfile=logfile, trajectory=traj)
+    target = atoms if fixed_cell else FrechetCellFilter(atoms, constant_volume=constant_volume)
+    opt = FIRE(target, logfile=logfile, trajectory=traj)
     opt.run(fmax=fmax, steps=steps)
     return {
         "V0_A3": v0, "V_A3": atoms.get_volume(),
@@ -178,6 +185,27 @@ def add_co2(atoms, per_formula_cell, grid=28):
     return atoms, n, clearances
 
 
+BOND_MAX = {("Al", "O"): 2.20, ("H", "O"): 1.20, ("C", "O"): 1.60,   # keys MUST be sorted
+            ("C", "C"): 1.70, ("C", "H"): 1.25}
+
+
+def bond_stats(atoms):
+    """Bond-length statistics by element pair, for the charge-transfer decision."""
+    sym = atoms.get_chemical_symbols()
+    n = len(atoms)
+    out = {}
+    for i in range(n - 1):                     # i = n-1 has no partners to its right
+        d = atoms.get_distances(i, list(range(i + 1, n)), mic=True)
+        for off, r in enumerate(d):
+            j = i + 1 + off
+            key = tuple(sorted((sym[i], sym[j])))
+            lim = BOND_MAX.get(key)
+            if lim and r < lim:
+                out.setdefault("-".join(key), []).append(float(r))
+    return {k: {"n": len(v), "mean": float(np.mean(v)), "min": float(np.min(v)),
+                "max": float(np.max(v))} for k, v in out.items()}
+
+
 def describe(tag, res, target, z):
     v = res["V_A3"] / z
     v0 = res["V0_A3"] / z
@@ -208,6 +236,8 @@ def main(argv=None):
     ap.add_argument("--fmax", type=float, default=0.05)
     ap.add_argument("--steps", type=int, default=400)
     ap.add_argument("--label", default="")
+    ap.add_argument("--fixed-cell", action="store_true",
+                    help="relax internal coordinates only; the cell is held exactly")
     ap.add_argument("--no-stage", action="store_true",
                     help="skip the fixed-cell guest-only pre-relaxation (not advised when inserting)")
     a = ap.parse_args(argv)
@@ -290,11 +320,15 @@ def main(argv=None):
         stage = {"fmax_before_eV_A": f0, "fmax_after_eV_A": f1, "steps": ns}
         print(f"  stage 1 (guests only, cell and framework fixed): "
               f"fmax {f0:.1f} -> {f1:.3f} eV/A in {ns} steps")
-    res = relax(atoms, calc, fmax=a.fmax, steps=a.steps,
+    res = relax(atoms, calc, fmax=a.fmax, steps=a.steps, fixed_cell=a.fixed_cell,
                 logfile=str(ROOT / "logs" / f"mace_{label}.log"),
                 traj=str(ROOT / "logs" / f"mace_{label}.traj"))
     describe(f"{label} + {n_co2} CO2", res, None, z)
     print(f"  V per formula cell: {res['V0_A3'] / z:.1f} -> {res['V_A3'] / z:.1f} A^3")
+    print(f"  bond lengths after relaxation (compare with the original np geometry):")
+    for kind, r in sorted(bond_stats(atoms).items()):
+        print(f"    {kind:6s} n={r['n']:3d}  mean {r['mean']:.3f} A  "
+              f"min {r['min']:.3f}  max {r['max']:.3f}")
 
     disp_tag = "D3" if a.dispersion else "noD3"
     write_cif(atoms, ROOT / "structures" / "derived" / f"{label}_{n_co2}CO2_MACE_{disp_tag}.cif", [

@@ -293,12 +293,21 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--n-trials", type=int, default=400000)
     ap.add_argument("--seed", type=int, default=20260926)
+    ap.add_argument("--extra", action="append", default=[], metavar="LABEL=CIF",
+                    help="additional structure to sample, e.g. "
+                         "'np CO2-cell=structures/derived/MIL-53_Al_np_CO2cell_MACErelaxed.cif'")
+    ap.add_argument("--z", action="append", default=[], type=int,
+                    help="formula cells per file cell for each --extra, in order (default 2)")
     ap.add_argument("--alpha", type=float, default=0.30,
                     help="Ewald splitting parameter [1/A]; the result must not depend on it")
     a = ap.parse_args(argv)
 
     jobs = [("lp (SABVUN-DDEC)", ROOT / "structures" / "MIL-53_Al_lp.cif", 1),
             ("np (PACMAN)", ROOT / "structures" / "MIL-53_Al_np.cif", 2)]
+    for k, spec in enumerate(a.extra):
+        lab, _, path = spec.partition("=")
+        jobs.append((lab, ROOT / path if not Path(path).is_absolute() else Path(path),
+                     a.z[k] if k < len(a.z) else 2))
     rng = np.random.default_rng(a.seed)
     rows, energies = [], {}
     for label, cif, z in jobs:
@@ -352,7 +361,8 @@ def main(argv=None):
     # ---------------- figure ----------------
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(12.4, 4.6), gridspec_kw={"wspace": 0.28})
     bins = np.linspace(-45, 60, 211)
-    styles = {"lp (SABVUN-DDEC)": SIM["color"], "np (PACMAN)": REF["color"]}
+    palette = [SIM["color"], REF["color"]] + list(EXTRA)
+    styles = {lab: palette[i % len(palette)] for i, lab in enumerate(energies)}
     for label, u in energies.items():
         h, _ = np.histogram(np.clip(u, bins[0], bins[-1]), bins=bins)
         ax.step(0.5 * (bins[1:] + bins[:-1]), h / len(u), where="mid",

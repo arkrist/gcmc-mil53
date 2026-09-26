@@ -1210,10 +1210,17 @@ bigger cell stretches every bond by roughly the cell strain:
 | C-O | 32 | 1.270 -> 1.312 A | +3.32 % |
 | C-H | 32 | 0.980 -> 1.012 A | +3.25 % |
 | C-C | 64 | 1.407 -> 1.432 A | +1.85 % |
+| **O-H** | 8 | 0.893 -> 0.973 A | **+8.96 %** |
 
 An aromatic C-C bond does not stretch 1.9 %, and an Al-O bond does not stretch 4.3 %.
 **This is exactly what the fixed-cell internal relaxation has to repair**, and it is why
 the unrelaxed transplant must not be used for anything.
+
+*Bug, recorded because it hid the most important row.* The first version of this table had
+no O-H line. `BOND_MAX` is keyed by `tuple(sorted(pair))`, but the hydroxyl entry had been
+written `("O", "H")` rather than `("H", "O")`, so the lookup silently missed every mu-OH
+bond -- the one bond this whole study turns on (5.2). Fixed in `build_np_co2_cell.py` and
+`mace_relax.py`; the O-H row above is the corrected value.
 
 **5.7.3 Zeo++ on the transplanted cells, BEFORE relaxation.**
 
@@ -1228,6 +1235,106 @@ The bottleneck opens from 2.52 to 2.90 A, but CO2 needs 3.30 A, so the accessibl
 is **still exactly zero**. That is not yet the answer: the unrelaxed transplant has all
 its bonds stretched 2-4 %, which pushes framework atoms *into* the pore. The relaxation
 pulls them back, and the post-relaxation numbers are what count.
+
+**5.7.4 MACE-MP-0 validation, against experiment AND against plain PBE.**
+
+`scripts/mace_relax.py --validate`: variable-cell relaxation (FIRE + FrechetCellFilter,
+float64, CPU) of the two EMPTY cells, both dispersion variants. Pass criterion fixed
+before running: within 5 %. Memory: 264 MB resident for the 152-atom cell, so the 8 GB
+limit was never near.
+
+| variant | cell | V relaxed [A^3] | vs experiment | vs Stavitski plain-PBE | closer to |
+|---|---|---|---|---|---|
+| MACE-MP-0, no dispersion | lp | 1462.2 | +3.56 % | **+1.71 %** | PBE |
+| MACE-MP-0, no dispersion | np | 958.6 | +1.36 % | **-1.19 %** | PBE |
+| MACE-MP-0 + D3 | lp | 1442.3 | +2.14 % | +0.32 % | PBE |
+| MACE-MP-0 + D3 | np | **947.0** | **+0.13 %** | -2.39 % | **exp** |
+
+References: experiment lp 1412.0 / np 945.8; Stavitski plain-PBE lp 1437.7 / np 970.2.
+
+**Both variants PASS**, and D3 is better on both cells -- decisively so on np, +0.13 %.
+The external calibration works as intended in one direction: **the dispersion-free
+variant tracks the dispersion-free DFT reference** (+1.71 % and -1.19 % against
+Stavitski, against +3.56 % and +1.36 % against experiment). Adding D3 moves np onto
+experiment almost exactly.
+
+**A prediction of ours that was wrong, and should be recorded as such.** Before running
+this we argued that a dispersion-free potential ought to *over-expand the np cell badly*,
+because the np form is held shut by linker-linker van der Waals attraction. It does not:
+plain MACE-MP-0 gives 958.6 A^3, only +1.36 % high. The discrimination between the two
+variants is real but small, and for the lp cell it is not discrimination at all -- both
+variants sit within 0.4-1.7 % of the PBE value and 2-3.6 % above experiment.
+
+**Why the argument failed, and the caveat that follows.** A local variable-cell
+relaxation started from the experimental np geometry stays in the np basin whatever the
+potential; it tests whether **each basin's geometry** is reproduced, not whether the
+**relative stability** of np and lp is right. Dispersion controls the latter. So this
+validation licenses:
+
+* fixed-cell internal relaxation in an experimentally-given cell (5.7.2) -- a weaker
+  demand still, and the one actually used;
+* np and lp basin geometries to ~2 %;
+
+and it does **not** license:
+
+* any prediction of which phase is stable, of a transition pressure, or of Delta F_host;
+* the variable-cell "relax np + 3 CO2 and read off the volume" route sketched earlier.
+  That route would have reported the nearest local minimum to whatever start it was
+  given, and this validation says nothing about whether that minimum is the right one.
+
+The experimental cell of 5.7.1 is therefore used as given, and MACE is asked only to
+repair internal coordinates inside it.
+
+**5.7.5 Does the CO2 cell have room for CO2?** Zeo++ probe scan, percolating
+probe-occupiable accessible volume [A^3 per cell]:
+
+| structure | V/cell | LCD | PLD | 1.30 A | 1.40 A | 1.50 A | **1.65 A (CO2)** |
+|---|---|---|---|---|---|---|---|
+| np, original | 945.8 | 2.828 | 2.516 | **0** | **0** | **0** | **0** |
+| np, CO2 cell, unrelaxed | 1072.5 | 3.248 | 2.904 | - | - | - | 0 |
+| **np, CO2 cell, MACE+D3 relaxed** | 1072.5 | **3.395** | **3.027** | **485.2** | **449.0** | **177.1** | **0** |
+| lp | 1412.0 | 7.014 | 6.771 | 715.2 | 704.3 | 694.8 | 675.0 |
+
+**The original np cell is closed at every probe size** -- it has no percolating volume
+even for a helium-sized 1.30 A probe, only 65.9 A^3 of isolated pockets. The relaxed
+CO2 cell is **open but tight**: 485 A^3 percolating at 1.30 A, which is 68 % of lp's, and
+still 177 A^3 at 1.50 A, but **zero at CO2's 1.65 A hard-sphere radius**. LCD 2.83 ->
+3.40 A, PLD 2.52 -> 3.03 A against CO2's 3.30 A kinetic diameter.
+
+**The 1.65 A zero must not be read as "still no room for CO2."** Zeo++ is a hard-sphere
+test and the GCMC is not, and we have the calibration to prove the gap matters: the
+original np scored zero at *every* probe size, yet its GCMC held 0.21 CO2 per cell at
+10 bar and its Widom gave K_H = 2.68e-7 with <U_gh> = -25.9 kJ/mol (5.6b). A Zeo++ zero
+is not a prediction of zero loading. The decisive quantity is the Widom K_H in this new
+cell, with the same soft LJ and Ewald as the production GCMC -- that is 5.7.6.
+
+**5.7.6 Charges: rerun PACMAN, do not carry them over.** The relaxed framework keeps the
+original atom order, verified element-by-element (`scripts/traj_to_cif.py` asserts it),
+so re-attaching charges by index is mechanically safe. The geometry test is what fails:
+
+| bond | original np | transplanted | relaxed | lp (independent reference) |
+|---|---|---|---|---|
+| Al-O | 1.894 | 1.975 | 1.921 | 1.796 |
+| C-C | 1.407 | 1.432 | 1.426 | 1.431 |
+| C-O | 1.270 | 1.312 | 1.276 | 1.291 |
+| C-H | 0.980 | 1.012 | 1.089 | 1.079 |
+| **O-H** | **0.893** | 0.973 | **0.967** | 0.862 |
+
+Mean atom displacement during relaxation 0.080 A, max 0.263 A. Every bond except the two
+involving hydrogen returns to within 1.5 % of the original, and the relaxed values land on
+the independently-measured lp bond lengths -- data MACE never saw. The C-H and O-H
+lengthening is a *correction*, not a distortion: X-ray systematically underestimates X-H
+because the hydrogen electron density sits toward the heavy atom, and 1.09 A is the
+physical aromatic C-H.
+
+But **O-H moves 0.893 -> 0.967 A, +8.3 %, at the mu-OH site**. That is the quantity 5.2 is
+built on: the lp-PACMAN file was flagged precisely because its 0.661 A O-H left the mu-OH
+dipole 32 % weak at Bourrelly's first CO2 binding site. Holding q_H = +0.435 while
+lengthening the bond 8.3 % inflates that dipole by ~8 % on geometry alone, and a DDEC6
+charge would itself shift as the bond lengthens (q_H falls), so the two errors compound
+rather than cancel. **Decision: rerun PACMAN v1.1 on the relaxed framework before any
+GCMC.** Cheap, and it removes a systematic error at the one site that dominates np
+binding.
 
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
