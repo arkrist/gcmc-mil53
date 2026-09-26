@@ -22,3 +22,6 @@ Restart/
 VTK/
 .DS_Store
 docs/*.pdf
+
+# detached-run logs (scripts/status.sh reads these)
+logs/
