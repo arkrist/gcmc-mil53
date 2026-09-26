@@ -69,9 +69,19 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="production")
     ap.add_argument("--no-reference", action="store_true")
+    ap.add_argument("--theta-he", type=float, default=THETA_HE,
+                    help="helium void fraction used for the excess column (phase-specific)")
+    ap.add_argument("--z", type=int, default=1,
+                    help="formula cells per RASPA unit cell (np file cell holds 2)")
+    ap.add_argument("--out-prefix", default="isotherm_MIL53_lp_CO2_304K")
     a = ap.parse_args(argv)
 
     df = collect(a.tag)
+    if a.z != 1:   # RASPA reports per FILE cell; convert to per formula cell
+        for c in [c for c in df.columns if "molec_uc" in c and not c.endswith("rel_err")]:
+            df[c] = df[c] / a.z
+    df["theta_He"] = a.theta_he
+    df["formula_cells_per_raspa_cell"] = a.z
     ref = None if a.no_reference else load_reference()
     out = ROOT / "results"
     out.mkdir(exist_ok=True)
@@ -83,10 +93,11 @@ def main(argv=None):
             "acc_insertion", "accepted_insertion", "acc_deletion", "accepted_deletion",
             "acc_reinsertion", "acc_translation", "acc_rotation", "cycles_init", "cycles_prod",
             "n_warnings", "missing_vdw_pairs", "file"]
-    csv = out / "isotherm_MIL53_lp_CO2_304K.csv"
+    csv = out / f"{a.out_prefix}.csv"
     header = (f"# CO2 in MIL-53(Al) lp, rigid framework, GCMC (RASPA2 2.0.50), T = {df.T_K.iloc[0]:g} K\n"
               f"# absolute and excess loading; 1 molecule/uc = {MOLKG_PER_UC:.4f} mol/kg (M_uc = {M_UC} g/mol)\n"
-              f"# excess uses the helium void fraction theta_He = {THETA_HE} (Widom He, 298 K, eps/k 10.9 K, sigma 2.64 A)\n"
+              f"# excess uses the helium void fraction theta_He = {a.theta_he} (Widom He, 298 K, eps/k 10.9 K, sigma 2.64 A)\n"
+              f"# loadings per FORMULA cell (M = {M_UC} g/mol, Z = 4); RASPA unit cell holds {a.z} formula cell(s)\n"
               f"# errors are RASPA's 95 % confidence half-widths (5 blocks, t = 2.776)\n")
     with open(csv, "w") as fh:
         fh.write(header)
@@ -110,7 +121,7 @@ def main(argv=None):
     fig, ax = plt.subplots(figsize=(7.2, 5.2))
     solid = df.absolute_molec_uc_rel_err <= 0.10
     ax.fill_between(df.p_bar, df.excess_mol_kg, df.absolute_mol_kg, color=SIM["color"], alpha=0.16, lw=0,
-                    label=f"absolute - excess (theta$_{{He}}$ = {THETA_HE})")
+                    label=f"absolute - excess (theta$_{{He}}$ = {a.theta_he})")
     ax.errorbar(df.p_bar, df.absolute_mol_kg, yerr=df.absolute_mol_kg_err95,
                 label="this work, absolute", **SIM)
     ax.errorbar(df.p_bar, df.excess_mol_kg, yerr=df.excess_mol_kg_err95,
@@ -157,8 +168,8 @@ def main(argv=None):
              "(Coudert 2008). Reference points are excess\n(assumed: manometry, convention not stated by the source) and are "
              "never converted; the band shows our absolute-excess gap.\nError bars: 95 % CI.",
              fontsize=7.5, va="top")
-    fig.savefig(out / "isotherm_MIL53_lp_CO2_304K.png")
-    print(f"wrote {(out / 'isotherm_MIL53_lp_CO2_304K.png').relative_to(ROOT)}")
+    fig.savefig(out / f"{a.out_prefix}.png")
+    print(f"wrote results/{a.out_prefix}.png")
     return 0
 
 

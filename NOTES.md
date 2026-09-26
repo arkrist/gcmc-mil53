@@ -684,6 +684,138 @@ Both failure modes are now **permanent guards** in the analysis scripts: a drift
 against RASPA's). Neither lets an unconverged run be reported as a code
 disagreement. Full write-up: `docs/technical_note.md` (section 6).
 
+## Phase 5: rigid np isotherm and the osmotic construction (2026-09-25/26)
+
+### 5.1 np structure
+`structures/MIL-53_Al_np.cif`. Source: **CoRE MOF 2024**, SI of *Powder Diffraction* 2019,
+**DOI 10.1017/S0885715619000460**, entry `S0885715619000460sup003` (CoRE key
+`2019[Al][bpq]3[ASR]4`), from GitHub `Chung-Research-Group/CoRE-MOF-Tools` commit
+`3f9fff7`, `CoREMOF/data/SI/CR.zip`. It is the sibling of the lp file from the same
+paper found in the Phase-2 search.
+
+**Identity confirmed by lattice, not by refcode.** The file is written as
+6.5687 / 15.2347 / 18.9855 A, beta = 95.377. In the setting a' = a + c this is
+**19.499 / 7.617 / 6.569 A, beta = 104.22 deg** against Loiseau 2004's lt cell
+(19.51 / 7.61 / 6.58, beta 104.2): 0.2 % per axis, 0.02 deg on beta. V per formula
+cell = **945.8 A^3** vs 947.
+
+| check | result |
+|---|---|
+| composition | Al8C64H40O40 = 2 x Al4C32H20O20 |
+| mass per formula cell | **832.415 g/mol, identical to lp** -> loadings per cell compare directly (Z = 4 both) |
+| mu-OH hydrogens | 4 per cell, O-H = 0.888-0.897 A |
+| aromatic hydrogens | 16 per cell |
+| water / guest | none: no O unbonded to Al or C (this is the solvent-removed version) |
+| net charge | 0.000000 e |
+| cell doubling | a **genuine superstructure**: a b/2 translation maps only 86 of 152 atoms (deviations to 0.07 fractional), so all 152 atoms are kept, Z = 8 per file cell |
+
+**Consequence for analysis:** RASPA reports loadings per FILE cell; every np loading is
+divided by 2 to get molecules per formula cell (`isotherm.py --z 2`).
+
+### 5.2 Charges: the PACMAN pair, and a defect in its lp member
+The CoRE 2014 DDEC set has **no np MIL-53(Al)** (all 2932 DDEC files scanned, plus
+CoRE 2014, 2019-ASR/FSR = 23,845 files, and the CoRE 2024 SI set; the only np-like Al
+hits were amino-MIL-53, a fumarate variant and phosphates). Decision: use the
+**PACMAN-DDEC6 pair** from the 2019 SI for both phases, EQeq dropped.
+
+**Finding that qualifies that decision:**
+
+| structure | q(Al) | q(O of OH) | q(H of OH) | O-H | OH dipole |
+|---|---|---|---|---|---|
+| lp SABVUN, DDEC (production isotherm) | +1.847 | -1.124 | +0.477 | 0.861 A | 0.411 e.A |
+| lp 2019 SI, PACMAN | +1.607 | -0.844 | +0.399 | **0.661 A** | 0.263 e.A |
+| np 2019 SI, PACMAN | +1.619 | -0.991 | +0.435 | 0.888-0.897 A | 0.387 e.A |
+
+The lp member of the pair has an **O-H bond of 0.661 A** -- not merely the short X-ray
+value (~0.85 A, as in SABVUN and in the np file) but unphysically short, a defect of
+that refinement. Its mu-OH dipole is **32 % weaker than its np partner's**, at exactly
+the site Bourrelly identifies as the first CO2 binding site. The pair is consistent in
+charge *method* but not in the geometry that matters most. The four-point lp-PACMAN vs
+lp-DDEC comparison (0.1, 1, 10, 30 bar) measures the size of that effect.
+
+### 5.3 Supercell and cut-off (np)
+12.0 A cut-off, tail corrections, Ewald 1e-6, every perpendicular width > 24 A.
+Replication **4 x 2 x 2** -> box widths 26.16 / 30.47 / 37.80 A = 16 file cells =
+**32 formula cells, 2432 framework atoms** (twice the lp framework).
+lp-PACMAN: same rules, **4 x 2 x 2**, widths 26.53 / 33.47 / 25.68 A.
+
+### 5.4 np helium void fraction and isotherm
+**theta_He(np) = 0.1210 +/- 0.0002** (Widom He, 298 K, same probe and force field as lp),
+against **0.7115** for lp: a ratio of 0.17, pore volume 0.083 vs 0.727 cm^3/g. The
+structure is decisively the closed form.
+
+**The rigid np cell barely adsorbs CO2** (`results/isotherm_MIL53_np_CO2_304K.csv`,
+10 points, 20,000 + 200,000 cycles each, 6.7 h wall on 4 cores):
+
+| p [bar] | 0.01 | 0.1 | 1 | 5 | 10 |
+|---|---|---|---|---|---|
+| CO2 per formula cell | 0.00022 | 0.0023 | 0.023 | 0.113 | **0.214** |
+
+Literature np capacity is **~3.0 CO2 per cell** (Bourrelly: 0.75 CO2 per structural OH;
+Ghoufi & Maurin: 3.0/uc at 4.7 bar for Cr). Ours is **14x smaller at 10 bar and still
+linear** -- no saturation anywhere. The initial slope gives K_np(rigid) ~ 2.8e-7
+mol/kg/Pa against Coudert's experimental 9.0e-5: **340x too small**.
+
+Not an input error: 2432 framework atoms, mass = 32 x 832.415 g/mol, zero missing-VDW
+warnings, charges read from the CIF, PR fugacity applied, insertion acceptance 0.35-2.3 %
+with 2800-18000 accepted insertions per point. **The cell is simply too tight**: LCD
+2.83 A versus CO2's 3.3 A kinetic diameter, consistent with theta_He = 0.12.
+
+**Why this was predictable in hindsight:** the file is the *empty, dehydrated* np
+structure. The real np phase *under CO2* is expanded -- that is what breathing means.
+Ghoufi & Maurin's 3.0 CO2/uc came from a **flexible** hybrid simulation and Coudert's np
+Langmuir parameters came from **experiment**; neither is a rigid-np GCMC. A rigid np
+isotherm computed in the empty np cell is therefore not a physical np branch, and this
+is a result about the method, not a bug.
+
+### 5.5 Osmotic construction (`scripts/osmotic.py`)
+Coudert 2008 eq. 8 and 11, per unit cell:
+Omega_os(P) = F_host + P V_host - int_0^P N_ads(p) V_m(p) dp, with N_ads from a
+single-site Langmuir fit. Both integrals are computed: the analytic ideal-gas form
+(N_max RT ln(1 + bP)) and a numerical one with the **Peng-Robinson** molar volume.
+V_lp = 1412.0 A^3, V_np = 945.8 A^3 per cell, from the two CIFs.
+
+**VALIDATION (step 1), Coudert's experimental parameters**, K_lp = 2.6e-5,
+K_np = 9.0e-5 mol/kg/Pa, N_max(lp) = 10.14 molec/cell from our fit to the digitised
+branch, **N_max(np) = 3.0 molec/cell ASSUMED** from Bourrelly's 0.75 CO2 per OH (his np
+N_max is not in the material we have), Delta F_host = 2.5 kJ/mol per cell:
+
+| | lp -> np | np -> lp |
+|---|---|---|
+| this construction, ideal-gas V_m | **0.273 bar** | 3.97 bar |
+| this construction, Peng-Robinson V_m | 0.274 bar | 4.00 bar |
+| Coudert 2008 | 0.3 bar (microcalorimetry 0.25) | 5-6 bar |
+
+The **closing transition is reproduced** (0.27 vs 0.3 bar, 9 % low). The **reopening is
+30 % low** (3.97 vs 5-6 bar). Peng-Robinson changes nothing below 100 bar (0.4 %), so
+the ideal-gas assumption is not the cause. The sensitivity scan
+(`results/osmotic_sensitivity.csv`) shows why: the reopening moves from 2.6 to 10.2 bar
+across Delta F = 1-4 kJ/mol and N_max(np) = 2.5-4.0, while the closing stays within
+0.08-0.65 bar. **The reopening pressure is controlled by the assumed N_max(np)**, which
+we do not have from the literature; at N_max(np) = 3.5 with the same Delta F it lands at
+5.8 bar, inside Coudert's range. *Nothing was tuned to obtain that*: the base case uses
+the stated Bourrelly value, and the scan is reported in full.
+
+**OUR SIMULATED PARAMETERS.**
+
+| parameter set | lp -> np | np -> lp |
+|---|---|---|
+| experiment (Coudert) | 0.273 bar | 3.97 bar |
+| **simulated lp + experimental np** | **none** | **none** |
+| **simulated lp + simulated np** | **none** | **none** |
+
+**Our lp force field erases the breathing window entirely.** The full-range Langmuir fit
+of our lp isotherm gives K = 2.21e-4 mol/kg/Pa, **8.5x the experimental lp value**, so
+Omega_lp falls below Omega_np at every pressure. **No value of Delta F_host between 0 and
+6 kJ/mol restores a transition** with our simulated lp (with experimental parameters a
+window exists for Delta F <= 4.7 kJ/mol). This is the quantitative answer to "how does
+force-field error propagate into the predicted breathing transition": a factor ~4-8 in
+the lp Henry/Langmuir constant does not shift the transitions, it **removes them**.
+
+Figure: `results/osmotic_construction.png`, three panels (experiment; simulated lp +
+experimental np; both simulated), transitions marked, measured transitions shown as grey
+reference lines.
+
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
 

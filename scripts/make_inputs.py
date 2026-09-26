@@ -97,7 +97,8 @@ def main(argv=None):
     if args.replication_only:
         return 0
     if args.helium_run:
-        d = ROOT / "runs" / "helium_void_fraction"
+        # directory carries the structure name: a fixed name silently mixes phases
+        d = ROOT / "runs" / f"helium_void_fraction_{cif.stem.replace('MIL-53_Al_', '')}"
         d.mkdir(parents=True, exist_ok=True)
         tmpl = (ROOT / "templates" / "helium_void_fraction.input.template").read_text()
         cycles = args.cycles if args.cycles != 50000 else 500000  # RASPA example default for He
@@ -109,7 +110,7 @@ def main(argv=None):
         print(f"wrote {d.relative_to(ROOT)}")
         return 0
     if args.widom_run:
-        d = ROOT / "runs" / "henry_widom_CO2"
+        d = ROOT / "runs" / f"henry_widom_CO2_{cif.stem.replace('MIL-53_Al_', '')}"
         d.mkdir(parents=True, exist_ok=True)
         tmpl = (ROOT / "templates" / "henry_widom.input.template").read_text()
         (d / "simulation.input").write_text(tmpl.format(
