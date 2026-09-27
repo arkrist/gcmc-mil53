@@ -966,16 +966,18 @@ and K_lp wrong by only 8.5x. The proposal is that it is not a force-field error 
 > **force-field** problem, and no amount of force-field work would fix it.
 
 **Step 1 -- Widom CO2 insertion in the np cell.** `runs/henry_widom_CO2_np/`, same force
-field, charges, Ewald and temperature as the isotherm; 200,000 cycles, RUNNING (about
-5 h; values below are its block average at cycle 10,000 and are already stable against
-the GCMC slope).
+field, charges, Ewald and temperature as the isotherm. **COMPLETE**: 200,000 cycles,
+13,420 s, 0 warnings.
 
 | | lp (SABVUN-DDEC) | np (PACMAN) |
 |---|---|---|
-| K_H [mol/kg/Pa] | 1.869e-4 +/- 1.6e-6 | **2.678e-7** |
-| Widom Rosenbluth factor <exp(-beta U)> | 461.6 | **0.9894** |
-| <U_gh> [kJ/mol] | -22.83 | **-25.91** |
-| excess chemical potential [kJ/mol] | -15.51 | **+0.03** |
+| K_H [mol/kg/Pa] | 1.86944e-4 +/- 1.58e-6 | **2.8631e-7 +/- 4.01e-9** |
+| Widom Rosenbluth factor <exp(-beta U)> | 461.57 | **1.0577 +/- 0.0148** |
+| <U_gh> [kJ/mol] | -22.828 | **-25.956 +/- 0.177** |
+| excess chemical potential [kJ/mol] | -15.51 | **-0.142** |
+
+(The cycle-10,000 block values quoted while the run was in flight -- 2.678e-7, 0.9894,
+-25.91 -- were already within 7 %, 7 % and 0.2 % of these finals.)
 
 The np K_H agrees with the two independent estimates we already had: the GCMC initial
 slope, 2.8e-7 (5.4), and the Langmuir fit of the np isotherm, 2.763e-7 (5.6(b)). So the
@@ -1387,6 +1389,33 @@ is quoted as final.
 is a RASPA Widom run in this cell on freshly-charged geometry, then the 10-point isotherm
 and `osmotic.py` with the charge-consistent pair, primary cell as Dundar 2017 and
 sensitivity at the 0.950-scaled volume.
+
+### 5.8 The np branch in the CO2 cell: isotherm and osmotic construction (2026-09-27)
+
+**5.8.0 Which charges, and why the pair is consistent.** Stated first because every number
+below depends on it.
+
+`structures/MIL-53_Al_np_CO2cell.cif` (= `structures/derived/MIL-53_Al_np_CO2cell_MACErelaxed.cif`)
+carries the **PACMAN v1.1 (ML DDEC6) charges computed on the ORIGINAL np geometry**, re-attached
+by index after `scripts/traj_to_cif.py` asserted the atom order is unchanged element by element.
+They were **not** recomputed on the relaxed framework.
+
+*Why that is consistent with the lp branch.* The construction pairs this np branch with the
+**lp-PACMAN** isotherm (`results/isotherm_MIL53_lp_pacman_CO2_304K.csv`, 5.6(e)). Both sides
+therefore come from the **same charge method**, PACMAN v1.1 applied to a MIL-53(Al) framework,
+which is the consistency 5.2 set out to obtain and which the mixed DDEC-lp/PACMAN-np pairing
+lacked. `osmotic.py` also reports the 12-point SABVUN-DDEC lp branch alongside, because 5.6(e)
+measured the charge effect on the lp branch at only 2.7 % against a 19 % fit-window effect; the
+two lp branches bracket the answer and both are printed.
+
+*Where the consistency is imperfect, stated plainly.* The np charges are **geometry-stale**. The
+fixed-cell relaxation moved O-H from 0.893 to 0.967 A (+8.3 %) at the mu-OH site, and CO2 binds
+through its quadrupole to that dipole. Holding q_H fixed across a bond 8.3 % longer inflates the
+dipole by about 8 %, and a recomputed DDEC6 charge would itself fall, so the two errors compound.
+**The effect is one-signed: it over-binds.** So every K and every loading below is an
+**upper bound**, and correcting the charges would move the np branch *towards* experiment, not
+away. 5.7.7 already showed the np branch overshooting experiment by 4.7x; this is part of that
+overshoot. Recomputing PACMAN on the relaxed framework remains the outstanding cleanup.
 
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
