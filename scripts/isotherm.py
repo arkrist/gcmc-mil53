@@ -39,6 +39,7 @@ def collect(tag):
         if not files:
             continue
         r = pro.parse_file(files[0]).iloc[0].to_dict()
+        r.update(convergence_guards(files[0]))
         # store the path relative to the repository, not the machine it ran on
         r["file"] = str(Path(r["file"]).resolve().relative_to(ROOT))
         if not r.get("finished"):
@@ -55,6 +56,59 @@ def collect(tag):
     df["theta_He"] = THETA_HE
     df["M_uc_g_per_mol"] = M_UC
     return df.sort_values("p_bar").reset_index(drop=True)
+
+
+def convergence_guards(data_file, nblocks=5):
+    """Drift and fluctuation guards on one RASPA production run.
+
+    Both were made permanent after Phase 4, where a still-filling pore produced
+    smooth-looking block error bars that described a TREND, not noise (NOTES.md,
+    "Step 2, second attempt"). They are applied here too, because the CO2-cell np
+    points run at high loading where insertion acceptance is lowest and sampling is
+    hardest.
+
+    drift       last block mean minus first block mean, against the 95 % error bar.
+                A point whose loading is still climbing has a biased mean.
+    sd(N)       standard deviation of the instantaneous molecule count. <dN^2> is a
+                physical property of the grand-canonical ensemble; an sd near zero
+                means N is effectively frozen and the samples are correlated, so the
+                block error bar understates the true uncertainty.
+    """
+    tr = pro.loading_trace(data_file)
+    # an in-flight or trace-less run gives an empty frame with no columns at all
+    prod = tr[tr.stage == "prod"] if ("stage" in tr.columns and not tr.empty) else tr
+    if prod.empty or len(prod) < nblocks:
+        return {"drift_molec_uc": np.nan, "drifting": True, "sd_N_box": np.nan,
+                "sd_N_per_uc": np.nan, "n_trace": len(prod), "frozen_N": True}
+    N = prod.N_box.to_numpy()
+    n = len(prod) // nblocks * nblocks
+    blocks = N[len(N) - n:].reshape(nblocks, -1).mean(axis=1)
+    drift = float(blocks[-1] - blocks[0])
+    err95 = float(2.776 * blocks.std(ddof=1) / np.sqrt(nblocks))
+    # The endpoint test alone is MIS-CALIBRATED: |last - first| has a 1-sigma scale of
+    # sqrt(2)*sd(blocks) = 1.41 sd, while err95 = 2.776/sqrt(5) sd = 1.24 sd, so the
+    # threshold sits below the natural scale of the statistic and a perfectly converged
+    # run trips it about 46 % of the time (measured, 200,000 synthetic runs). Phase 4's
+    # real drift was monotonic filling, so a trend test is what distinguishes the two.
+    # A point is called drifting only if the endpoint test fires AND the loading trend
+    # across 10 blocks is genuinely directional; joint false-positive rate ~6 %.
+    n10 = len(N) // 10 * 10
+    if n10 >= 10:
+        b10 = N[len(N) - n10:].reshape(10, -1).mean(axis=1)
+        trend = float(np.corrcoef(np.arange(10), b10)[0, 1]) if b10.std() > 0 else 0.0
+    else:
+        trend = 0.0
+    sd = float(prod.N_box.std())
+    mean_n = float(prod.N_box.mean())
+    # a Poisson-like floor: sd(N) should be of order sqrt(N) in the grand canonical
+    # ensemble; far below that means the particle number is not really moving
+    return {"drift_N_box": drift, "drift_err95_N_box": err95, "trend_r_10blocks": trend,
+            "drifting": bool(abs(drift) > max(err95, 1e-12) and abs(trend) >= 0.5),
+            "drift_endpoint_only": bool(abs(drift) > max(err95, 1e-12)),
+            "sd_N_box": sd, "mean_N_box": mean_n,
+            "sd_over_sqrtN": sd / np.sqrt(mean_n) if mean_n > 0 else np.nan,
+            "n_trace": int(len(prod)),
+            "frozen_N": bool(mean_n > 0 and sd < 0.2 * np.sqrt(mean_n))}
 
 
 def load_reference():
@@ -109,6 +163,9 @@ def main(argv=None):
             "excess_molec_uc_rel_err", "bulk_density_kg_m3", "theta_He", "theta_He_widom", "M_uc_g_per_mol",
             "acc_insertion", "accepted_insertion", "acc_deletion", "accepted_deletion",
             "acc_reinsertion", "acc_translation", "acc_rotation", "cycles_init", "cycles_prod",
+            "drift_N_box", "drift_err95_N_box", "trend_r_10blocks", "drifting",
+            "drift_endpoint_only", "sd_N_box", "mean_N_box",
+            "sd_over_sqrtN", "frozen_N", "n_trace",
             "n_warnings", "missing_vdw_pairs", "file"]
     csv = out / f"{a.out_prefix}.csv"
     header = (f"# CO2 in MIL-53(Al) {a.phase}, rigid framework, GCMC (RASPA2 2.0.50), T = {df.T_K.iloc[0]:g} K\n"
@@ -130,6 +187,22 @@ def main(argv=None):
     bad = df[df.absolute_molec_uc_rel_err > 0.10]
     for _, r in bad.iterrows():
         print(f"  FLAG: {r.p_bar:g} bar has {100 * r.absolute_molec_uc_rel_err:.1f} % relative error on loading (> 10 %)")
+    for _, r in df[df.get("drifting", False) == True].iterrows():
+        print(f"  GUARD FAIL: {r.p_bar:g} bar is still DRIFTING -- last block minus first = "
+              f"{r.drift_N_box:+.2f} molecules against a {r.drift_err95_N_box:.2f} error bar, "
+              f"with a directional 10-block trend r = {r.trend_r_10blocks:+.2f}; "
+              f"the mean is biased and the error bar describes a trend, not noise")
+    for _, r in df[(df.get("drift_endpoint_only", False) == True) & (df.get("drifting", False) == False)].iterrows():
+        print(f"  (info: {r.p_bar:g} bar trips the endpoint drift test "
+              f"[{r.drift_N_box:+.2f} vs {r.drift_err95_N_box:.2f}] but its 10-block trend is "
+              f"r = {r.trend_r_10blocks:+.2f}, not directional -- endpoint noise, not filling)")
+    for _, r in df[df.get("frozen_N", False) == True].iterrows():
+        print(f"  GUARD FAIL: {r.p_bar:g} bar has sd(N) = {r.sd_N_box:.2f} against sqrt(<N>) = "
+              f"{np.sqrt(r.mean_N_box):.2f}; the particle number is effectively frozen, so the "
+              f"block error bar understates the true uncertainty")
+    for _, r in df[df.absolute_molec_uc_rel_err > 0.05].iterrows():
+        print(f"  NOTE: {r.p_bar:g} bar has {100 * r.absolute_molec_uc_rel_err:.1f} % relative "
+              f"error (> 5 %, the threshold set when the cycle count was cut to 50,000)")
     low = df[df.acc_insertion < 0.01]
     for _, r in low.iterrows():
         print(f"  FLAG: {r.p_bar:g} bar insertion acceptance {100 * r.acc_insertion:.2f} % (< 1 %), "

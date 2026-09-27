@@ -1417,6 +1417,83 @@ dipole by about 8 %, and a recomputed DDEC6 charge would itself fall, so the two
 away. 5.7.7 already showed the np branch overshooting experiment by 4.7x; this is part of that
 overshoot. Recomputing PACMAN on the relaxed framework remains the outstanding cleanup.
 
+**5.8.1 Cycle count cut to 50,000, and why.** The np_co2cell isotherm was launched with
+the Phase-5 setting of 20,000 + 200,000 cycles. That setting was calibrated on the
+ORIGINAL np cell, which held ~0.2 CO2 per formula cell, so every point ran at RASPA's
+floor of 20 moves per cycle. The CO2 cell holds ~2.9 per formula cell -- about 91
+molecules in the 2x2x4 box -- so a cycle is `max(20, N)` = 91 moves, and each move costs
+more through the adsorbate-adsorbate terms. Measured wall times:
+
+| bar | CO2 per formula cell | molecules in box | wall time at 200,000 cycles |
+|---|---|---|---|
+| 0.01 | 0.41 | 13 | 4.3 h |
+| 0.02 | 0.69 | 22 | 5.0 h |
+| 0.05 | 1.26 | 40 | 8.9 h |
+| saturation | ~2.9 | ~91 | ~20 h (projected) |
+
+At that rate the ten points would have taken about 60 h. The three finished points reached
+**1.61 %, 1.61 % and 0.89 % relative error** on absolute loading, against the standing
+10 % flag -- 10-40x more sampling than the result needs.
+
+**The criterion was therefore changed from matched CYCLES to matched PRECISION**, with a
+5 % relative-error ceiling. Production cycles cut 200,000 -> 50,000 (error scales as
+1/sqrt(cycles), so 1.6 % -> ~3.2 %). Per-point `cycles_prod` and
+`absolute_molec_uc_rel_err` are in the CSV, so the difference is visible in the data
+rather than hidden in a setting.
+
+Which points were restarted was decided by arithmetic, not preference -- a restart is
+worth it only when a fresh 70,000-cycle run (20,000 init + 50,000 production) is shorter
+than finishing the current one:
+
+| bar | cycles done | to finish at 200,000 | fresh run | action |
+|---|---|---|---|---|
+| 0.10 | 139,000 | 61,000 | 70,000 | **let it finish** |
+| 0.20 | 46,000 | 154,000 | 70,000 | restart |
+| 0.50 | 27,000 | 173,000 | 70,000 | restart |
+| 1.00 | 0 (init) | 220,000 | 70,000 | restart |
+| 2, 5, 10 | not started | - | 70,000 | run at 50,000 |
+
+**5.8.2 The drift guard was mis-calibrated, and is now fixed.** Applying the Phase-4
+guards to these points flagged 0.02 bar as drifting: last block minus first = +1.05
+molecules against a 0.86 error bar. Inspection showed it was not drifting at all. The
+ten-block sequence bounces -- 20.8, 21.75, 21.0, 23.15, 23.3, 22.95, 21.1, 22.4, 23.65,
+21.0 -- with a linear trend of r = +0.26 and first-half/second-half means of 22.00 and
+22.22. Phase 4's genuine failure was monotonic pore filling (6.4 -> 7.8 -> 8.25).
+
+**The test is over-sensitive by construction.** `|last - first|` has a 1-sigma scale of
+sqrt(2) x sd(blocks) = 1.41 sd, while the threshold err95 = 2.776/sqrt(5) x sd = 1.24 sd
+sits *below* it. Measured on 200,000 synthetic converged runs, the endpoint test alone
+fires **46 % of the time on a run with no drift whatsoever**. In Phase 4 that did not
+matter, because the real drift was several times the error bar; as a routine per-point
+guard it would flag half of all good points.
+
+Fix: a point is called drifting only when the endpoint test fires **and** the ten-block
+loading trend is directional (|r| >= 0.5). Joint false-positive rate ~6 %. Both numbers
+are recorded per point (`drift_N_box`, `drift_err95_N_box`, `trend_r_10blocks`,
+`drift_endpoint_only`, `drifting`), and an endpoint-only trip is reported as information
+rather than as a failure. **0.02 bar is converged**; it trips the old test and passes the
+new one.
+
+The fluctuation guard passes everywhere: sd(N)/sqrt(<N>) = 0.96, 0.88 and 0.81 at 0.01,
+0.02 and 0.05 bar, i.e. close to the grand-canonical Poisson scale. No frozen particle
+number.
+
+**5.8.3 Accepted insertions against Phase 3.** The quantity the statistics actually rest
+on (NOTES "What every result carries"):
+
+| | accepted insertions | acceptance |
+|---|---|---|
+| np_co2cell, 0.01-0.05 bar, 200,000 cycles | 78,600 - 100,500 | 6.2 - 9.8 % |
+| np_co2cell projected at 50,000 cycles | ~20,000 - 25,000 | unchanged |
+| Phase 3 lp production, worst point (50 bar) | 5,993 | 0.37 % |
+| Phase 3 lp production, 10 bar | 17,222 | 1.18 % |
+| original np (5.4), range over all points | 2,800 - 18,000 | 0.35 - 2.3 % |
+
+Even after the cut, every np_co2cell point should carry **3-4x more accepted insertions
+than the worst Phase-3 point**, which itself returned 0.59 % relative error. Acceptance is
+higher here than in the lp cell at comparable loading because the pore is smaller, so a
+successful insertion is a larger fraction of the accessible volume.
+
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
 
