@@ -135,6 +135,11 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--dF", type=float, default=2.5, help="F_np - F_lp [kJ/mol per cell]")
     ap.add_argument("--scan", type=float, nargs=2, default=[1.0, 4.0])
+    ap.add_argument("--np-csv", default="results/isotherm_MIL53_np_CO2_304K.csv",
+                    help="the simulated np branch to use (5.8 replaces the original np cell, "
+                         "whose pore is closed to CO2, with the experimental CO2-loaded cell)")
+    ap.add_argument("--np-label", default="np (original cell)")
+    ap.add_argument("--out-suffix", default="")
     a = ap.parse_args(argv)
 
     # ---------------- 1. validation with Coudert's experimental parameters
@@ -176,7 +181,7 @@ def main(argv=None):
     print(f"   lp (rigid, SABVUN-DDEC, 12 pts): N_max = {sim_lp['nmax']:.2f} molec/cell, "
           f"b = {sim_lp['b']:.3e} /Pa, K = {sim_lp['fit']['K_mol_kg_Pa']:.3e} mol/kg/Pa, "
           f"fit ok = {sim_lp['fit']['ok']}")
-    np_csv = ROOT / "results" / "isotherm_MIL53_np_CO2_304K.csv"
+    np_csv = ROOT / a.np_csv if not Path(a.np_csv).is_absolute() else Path(a.np_csv)
     sets = {"experiment (Coudert)": exp,
             "simulated lp + experimental np": dict(exp, nmax_lp=sim_lp["nmax"], b_lp=sim_lp["b"])}
     # The np file is PACMAN-DDEC6, so pairing it with the SABVUN-DDEC lp mixes charge sets.
@@ -191,22 +196,46 @@ def main(argv=None):
               f"fit ok = {sim_lp_pac['fit']['ok']}")
     if np_csv.exists():
         sim_np = langmuir_from_isotherm(np_csv)
-        print(f"   np (rigid, PACMAN): N_max = {sim_np['nmax']:.2f} molec/cell, b = {sim_np['b']:.3e} /Pa, "
+        print(f"   np [{a.np_label}]: N_max = {sim_np['nmax']:.2f} molec/cell, b = {sim_np['b']:.3e} /Pa, "
               f"K = {sim_np['fit']['K_mol_kg_Pa']:.3e} mol/kg/Pa, fit ok = {sim_np['fit']['ok']}")
         if not sim_np["fit"]["ok"]:
             print("   NOTE: the np Langmuir fit is degenerate (the simulated np isotherm does not "
                   "saturate); K = N_max b is still meaningful, N_max and b separately are not.")
-        sets["simulated lp (DDEC) + simulated np (PACMAN): MIXED charge sets"] = {
+        sets[f"simulated lp (DDEC, 12 pts) + {a.np_label}: MIXED charge sets"] = {
             "nmax_lp": sim_lp["nmax"], "b_lp": sim_lp["b"],
             "nmax_np": sim_np["nmax"], "b_np": sim_np["b"]}
         if sim_lp_pac is not None:
-            sets["simulated lp + np, both PACMAN: CONSISTENT pair"] = {
+            sets[f"simulated lp (PACMAN) + {a.np_label}: CONSISTENT pair"] = {
                 "nmax_lp": sim_lp_pac["nmax"], "b_lp": sim_lp_pac["b"],
                 "nmax_np": sim_np["nmax"], "b_np": sim_np["b"]}
     for name, par in sets.items():
         cr = transitions(par, a.dF)[3]
         print(f"   {name:32s} -> " + (", ".join(f"{p:.3f} bar ({w})" for p, w in cr) if cr
                                       else "NO TRANSITION: lp stable at every pressure"))
+
+    # ---------------- 2b. dF scan on the SIMULATED pair (not just the experimental one)
+    sim_sets = {k: v for k, v in sets.items() if "CONSISTENT" in k or "MIXED" in k}
+    if sim_sets:
+        print("\n   Delta F_host scan on the simulated pairs "
+              f"({a.scan[0]:g}-{a.scan[1]:g} kJ/mol per cell, 0.25 steps):")
+        rows = []
+        for name, par in sim_sets.items():
+            for dF in np.arange(a.scan[0], a.scan[1] + 1e-9, 0.25):
+                cr = transitions(par, float(dF))[3]
+                short = "CONSISTENT (lp PACMAN)" if "CONSISTENT" in name else "MIXED (lp DDEC)"
+                rows.append({"pair": short, "pair_full": name, "dF_kJ_mol": float(dF),
+                             "lp->np_bar": next((q for q, w in cr if w == "lp -> np"), np.nan),
+                             "np->lp_bar": next((q for q, w in cr if w == "np -> lp"), np.nan)})
+        sim_scan = pd.DataFrame(rows)
+        with pd.option_context("display.float_format", "{:.3f}".format, "display.width", 200):
+            piv = sim_scan.pivot(index="dF_kJ_mol", columns="pair",
+                                 values=["lp->np_bar", "np->lp_bar"])
+            print(piv.to_string() if piv.notna().any().any()
+                  else "     no crossing anywhere in the scanned range, for either pair")
+        out_scan = ROOT / "results" / f"osmotic_sensitivity_simulated{a.out_suffix}.csv"
+        sim_scan.to_csv(out_scan, index=False)
+        print(f"   wrote {out_scan.relative_to(ROOT)}")
+        print("   (experiment: lp->np 0.25-0.3 bar, np->lp 5-6 bar)")
 
     # ---------------- 3. figure
     fig, axes = plt.subplots(1, len(sets), figsize=(5.2 * len(sets), 4.4), squeeze=False)
@@ -232,8 +261,9 @@ def main(argv=None):
                         xycoords="axes fraction", fontsize=8, color="#6b6b66")
     fig.suptitle(f"Osmotic construction, CO$_2$/MIL-53(Al), {T:g} K, "
                  f"$\\Delta F_{{host}}$ = {a.dF:g} kJ/mol per cell", y=1.02)
-    fig.savefig(ROOT / "results" / "osmotic_construction.png")
-    print("\nwrote results/osmotic_construction.png and results/osmotic_sensitivity.csv")
+    fig.savefig(ROOT / "results" / f"osmotic_construction{a.out_suffix}.png")
+    print(f"\nwrote results/osmotic_construction{a.out_suffix}.png and "
+          f"results/osmotic_sensitivity.csv")
     return 0
 
 
