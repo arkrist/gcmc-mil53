@@ -219,12 +219,26 @@ def describe(tag, res, target, z):
 
 
 def write_cif(atoms, path, header_lines):
+    """Write a relaxed structure -- WITHOUT charges, and say so loudly.
+
+    ASE's CIF writer has no _atom_site_charge column, so anything written here is
+    unusable for GCMC: RASPA reads framework charges from that column and would
+    silently run an uncharged framework. To keep the charges, recover the structure
+    from the trajectory with scripts/traj_to_cif.py, which re-attaches labels and
+    charges by index after asserting the atom order is unchanged.
+    """
     from ase.io import write
+    path = path.with_name(path.stem + "_NOCHARGES" + path.suffix)
     path.parent.mkdir(parents=True, exist_ok=True)
     write(str(path), atoms, format="cif")
     body = path.read_text()
-    path.write_text("".join(f"# {l}\n" for l in header_lines) + body)
-    print(f"  wrote {path.relative_to(ROOT)}")
+    path.write_text("".join(f"# {l}\n" for l in header_lines)
+                    + "# NO _atom_site_charge COLUMN -- NOT USABLE FOR GCMC.\n"
+                    + "# Use scripts/traj_to_cif.py on the trajectory to keep the charges.\n"
+                    + body)
+    print(f"  wrote {path} (geometry only)")
+    print(f"  *** this file has NO CHARGES; for GCMC use scripts/traj_to_cif.py on "
+          f"the trajectory instead ***")
 
 
 def main(argv=None):
