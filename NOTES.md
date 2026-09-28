@@ -1494,6 +1494,109 @@ than the worst Phase-3 point**, which itself returned 0.59 % relative error. Acc
 higher here than in the lp cell at comparable loading because the pore is smaller, so a
 successful insertion is a larger fraction of the accessible volume.
 
+**5.8.4 The osmotic construction, done properly: numerical integration of eq. 8.**
+
+Coudert eq. 11 is only the analytical specialisation of eq. 8 for a single-site
+Langmuir isotherm, used for his taxonomy; his footnote 48 states the method works with
+any adequate description of the isotherm. Ours are **not** single-site Langmuir --
+weighted chi2_red is **318** for the np CO2-cell branch and **1368** for the lp branch,
+with systematic S-shaped residuals (+13 % at 0.01 bar, -8 % at 0.2 bar, +8 % at 10 bar
+for np), because the simulated isotherms are more energetically heterogeneous than one
+site. Forcing that form imposes an N_max the data do not support -- the observed 10-bar
+loading, 3.646 CO2/cell, already exceeds the fitted N_max of 3.377.
+
+`scripts/osmotic_numeric.py` integrates eq. 8 on the measured points directly:
+monotone PCHIP in log p between points (Fritsch-Carlson, numpy only -- an ordinary
+spline overshoots and can make N(p) non-monotonic), an analytic Henry segment below the
+lowest point contributing N(p0) RT, and Peng-Robinson V_m.
+
+**This also disposes of the N_max question.** The integral runs from 0 to the transition
+pressure and both transitions lie below 10 bar, so points above 10 bar never enter.
+N_max mattered only because a Langmuir extrapolates through it.
+
+**VALIDATION.** Synthetic points generated from Coudert's experimental Langmuir
+parameters on our own pressure grid, pushed through this numerical machinery, reproduce
+the analytical transitions to **+0.04 %** (0.273 bar) and **+0.27 %** (3.983 against
+3.972 bar).
+
+**RESULT: the double transition appears from simulation alone -- case c**, where the
+Langmuir route gave none at any Delta F:
+
+| | lp -> np | np -> lp | window ratio |
+|---|---|---|---|
+| dF = 1.0, lp-DDEC | 0.016 | 0.262 bar | 16.4 |
+| dF = 2.5, lp-DDEC | 0.071 | 0.151 bar | 2.1 |
+| dF = 2.5, lp-PACMAN | 0.062 | 0.158 bar | 2.5 |
+| **experiment** | **0.27** | **5.5 bar** | **20.4** |
+
+Bootstrap 95 % CIs over the loading error bars are +/-0.002 bar on the closing and
++/-0.005 on the reopening, so counting statistics are not the limitation.
+
+**5.8.5 Decomposing the discrepancy: two checks.**
+
+**Check 1, corresponding states.** If the shift were only the common Henry-regime
+over-binding, stretching each branch's pressure axis by its own K_sim/K_exp
+(f_lp = 7.19, f_np = 5.45) should map the transitions onto experiment:
+
+| dF | lp -> np | np -> lp |
+|---|---|---|
+| 2.0 | 0.174 | 2.240 |
+| **2.5** | **0.243** | **2.001** |
+| 3.0 | 0.333 | 1.752 |
+| experiment | 0.27 | 5.5 |
+
+**The closing transition is recovered: 0.243 against 0.27 bar, 10 % low, from 17x low
+before rescaling. The lp -> np discrepancy is entirely Henry-regime over-binding.**
+The reopening improves from 22x too low to **2.7x too low** and stops there.
+
+**Check 2, inverse Delta F -- one parameter fitted to one transition, the other
+predicted.** Coudert's 2.5 kJ/mol was extracted from the EXPERIMENTAL isotherms, so it
+is not force-field-consistent; the fair test fits dF_host to the experimental closing
+and asks what reopening follows.
+
+| branches | dF fitted to lp->np = 0.27 bar | np -> lp predicted | vs 5-6 bar |
+|---|---|---|---|
+| unscaled, lp-DDEC | **0.27 bar unreachable at any dF** (max 0.093 at dF 2.67) | - | - |
+| unscaled, lp-PACMAN | **unreachable** (max 0.097) | - | - |
+| rescaled, lp-DDEC | **2.669 kJ/mol** | **1.92 bar** | 2.87x low |
+| rescaled, lp-PACMAN | **2.713 kJ/mol** | **1.79 bar** | 3.07x low |
+
+Two things follow. **With the unscaled branches no value of the one free parameter
+reproduces the experimental closing pressure** -- the window opens at small dF and
+annihilates near 2.7 kJ/mol with lp->np never exceeding ~0.095 bar, so the experimental
+number is outside the model's reach entirely, not merely mis-predicted. And once the
+affinities are corrected, **dF fitted to the closing lands at 2.67-2.71 kJ/mol against
+Coudert's 2.5 extracted from experiment** -- an independent consistency check on the
+construction.
+
+**5.8.6 The reopening residual (~3x): three candidate explanations, none tested here.**
+
+Stated as candidates, in the order we would test them:
+
+1. **Hysteresis.** The experimental 5-6 bar step is on the **adsorption** branch. The
+   thermodynamic transition lies inside the hysteresis loop, below the adsorption step;
+   Coudert 2008 notes that a single branch only brackets the transition pressure. Our
+   construction predicts the **equilibrium** pressure, which should therefore fall below
+   5-6 bar. How far below is not something a single branch can settle, and we have not
+   attempted to.
+
+2. **A rigid np cannot expand with loading.** Salles 2008 shows the np phase expanding
+   progressively above ~4 CO2 per unit cell. Our np host is frozen at the 1 bar
+   CO2-loaded geometry of Serre 2007, so it cannot follow that expansion; beyond the
+   loading at which the real np starts to swell, our branch must under-hold, which moves
+   the reopening down. A flexible-framework treatment would test this directly and is the
+   obvious next step.
+
+3. **Over-binding at high loading is not the same as the Henry-regime correction.** The
+   corresponding-states rescaling applies one factor per branch, measured at zero
+   coverage. Neither branch is Langmuir (5.8.4), so the ratio K_sim/K_exp at zero
+   coverage need not describe the error at the loadings that set the reopening. The
+   residual factor of ~3 is consistent with the rescaling being right at low coverage and
+   wrong at high.
+
+These are not ranked by likelihood, and (1) alone could account for a substantial part of
+the residual without any force-field error at all.
+
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
 

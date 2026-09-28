@@ -283,3 +283,64 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# ------------------------------------------------- corresponding states / inverse dF
+def rescale_branch(br, f):
+    """Stretch a branch's pressure axis by f = K_sim / K_exp.
+
+    If the simulation over-binds by f in the Henry regime, then N_sim(p) ~ f K_exp p.
+    Putting the same loadings at pressures f*p gives a branch with the EXPERIMENTAL
+    initial slope while keeping the simulated shape. The construction is not scale
+    invariant -- the PV term and V_m(p) do not rescale -- so the integral is redone
+    rather than the transition pressures simply multiplied.
+    """
+    return Branch(br.p * f, br.n, k_henry_percell_per_pa=br.k / f)
+
+
+def solve_dF_for(br_lp, br_np, target_bar, which="lp -> np", lo=0.0, hi=8.0, n=200, tol=1e-4):
+    """Delta F_host that puts `which` at target_bar, or None if unreachable.
+
+    dF = 0 is degenerate (Omega_np - Omega_lp -> 0 as P -> 0, so there may be no
+    crossing at all), so the interval is BRACKETED by scanning first rather than
+    assumed to start at a valid point -- an earlier version returned None whenever
+    dF = 0 had no crossing, which hid reachable solutions.
+    """
+    grid = np.linspace(lo, hi, n)
+    vals = []
+    for dF in grid:
+        g = {w: q for q, w in transitions_numeric(br_lp, br_np, float(dF))[3]}
+        vals.append(g.get(which))
+    idx = [i for i in range(len(grid) - 1)
+           if vals[i] is not None and vals[i + 1] is not None
+           and (vals[i] - target_bar) * (vals[i + 1] - target_bar) <= 0]
+    if not idx:
+        return None
+    a, b = grid[idx[0]], grid[idx[0] + 1]
+    for _ in range(60):
+        m = 0.5 * (a + b)
+        g = {w: q for q, w in transitions_numeric(br_lp, br_np, float(m))[3]}
+        vm = g.get(which)
+        if vm is None:
+            b = m
+            continue
+        if (vals[idx[0]] - target_bar) * (vm - target_bar) <= 0:
+            b = m
+        else:
+            a = m
+        if b - a < tol:
+            break
+    m = 0.5 * (a + b)
+    g = {w: q for q, w in transitions_numeric(br_lp, br_np, float(m))[3]}
+    v = g.get(which)
+    return m if (v is not None and abs(v - target_bar) / target_bar < 0.05) else None
+
+
+def max_reachable(br_lp, br_np, which="lp -> np", lo=0.0, hi=8.0, n=160):
+    best, best_dF = None, None
+    for dF in np.linspace(lo, hi, n):
+        g = {w: q for w, q in [(w, q) for q, w in transitions_numeric(br_lp, br_np, float(dF))[3]]}
+        v = g.get(which)
+        if v is not None and (best is None or v > best):
+            best, best_dF = v, float(dF)
+    return best, best_dF
