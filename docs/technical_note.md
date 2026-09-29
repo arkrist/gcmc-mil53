@@ -118,6 +118,45 @@ python scripts/isotherm.py                 # CSV and figures
 python scripts/langmuir.py                 # fits
 ```
 
+The narrow-pore half needs two further environments, kept separate so the validated RASPA
+environment is untouched:
+
+```
+micromamba create -n zeopp -c conda-forge zeopp-lsmo
+micromamba create -n mace -c conda-forge python=3.11 pip
+micromamba run -n mace pip install mace-torch ase torch-dftd
+```
+
+```
+python scripts/build_np_co2_cell.py          # Al framework into the Serre 2007 CO2 cell
+python scripts/mace_relax.py --validate      # MACE-MP-0 on both empty cells, ~50 min
+python scripts/mace_relax.py --cif structures/derived/MIL-53_Al_np_Serre2007_CrCO2np.cif \
+       --fixed-cell --dispersion --label npCO2cell_Serre --fmax 0.03
+python scripts/traj_to_cif.py logs/mace_npCO2cell_Serre.traj \
+       structures/derived/MIL-53_Al_np_Serre2007_CrCO2np.cif \
+       structures/MIL-53_Al_np_CO2cell.cif   # re-attaches labels and charges
+network -ha -res out.res structures/MIL-53_Al_np_CO2cell.cif          # Zeo++, env "zeopp"
+network -ha -volpo 1.65 1.65 50000 out.volpo structures/MIL-53_Al_np_CO2cell.cif
+python scripts/make_inputs.py --cif structures/MIL-53_Al_np_CO2cell.cif --helium-run
+python scripts/make_inputs.py --cif structures/MIL-53_Al_np_CO2cell.cif --widom-run --cycles 100000
+python scripts/make_inputs.py --cif structures/MIL-53_Al_np_CO2cell.cif --tag np_co2cell \
+       --helium-vf 0.280486 --cycles 50000 --init 20000
+bash scripts/run_isotherm.sh np_co2cell 4    # resumable; see the cycle-count note below
+python scripts/isotherm.py --tag np_co2cell --theta-he 0.280486 --z 2 --no-reference \
+       --phase np --fit-window 0 --out-prefix isotherm_MIL53_npCO2cell_CO2_304K
+python scripts/insertion_energy.py           # insertion-energy distributions
+python scripts/osmotic_numeric.py            # equation 8 numerically; validates itself first
+python scripts/dual_site.py                  # dual-site cross-check
+python scripts/figure_osmotic.py             # the three-panel figure
+scripts/status.sh                            # state of every run
+```
+
+Cycle counts differ by point and are recorded per point in the CSV (`cycles_init`,
+`cycles_prod`). The four lowest pressures ran 20 000 + 200 000 cycles; the rest 20 000 +
+50 000, which was enough for the same relative precision because loading is higher. The
+0.5 bar point needed 100 000 initialisation cycles to clear the equilibration guard. The
+20, 30 and 50 bar points affect only the capacity figure, not the construction.
+
 Note: `simulate -v` misreports "RASPA 2.0.41" while the package and the run headers report 2.0.50.
 
 Every decision, including those corrected along the way, is recorded in `NOTES.md`.
