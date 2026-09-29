@@ -122,15 +122,69 @@ Note: `simulate -v` misreports "RASPA 2.0.41" while the package and the run head
 
 Every decision, including those corrected along the way, is recorded in `NOTES.md`.
 
-## 9. Narrow-pore phase and the osmotic construction
+## 9. The narrow-pore phase: a structure problem, not a force-field one
 
-The narrow-pore structure was taken from the SI of *Powder Diffraction* 2019 (DOI 10.1017/S0885715619000460) through CoRE MOF 2024, the sibling of the lp file from the same source, with PACMAN-DDEC6 charges. Identity was again fixed by the lattice: in the setting a′ = a + c the cell is 19.499 / 7.617 / 6.569 Å, β = 104.22°, against Loiseau's lt cell 19.51 / 7.61 / 6.58, β = 104.2 — 0.2 % per axis. Volume 945.8 Å³ per formula cell, mass 832.415 g/mol, identical to lp, so loadings per cell are directly comparable. The file cell is a genuine 2× superstructure (a b/2 translation maps only 86 of 152 atoms), so all 152 atoms are kept and loadings are divided by two. Replication 4 × 2 × 2, 2432 framework atoms, 12.0 Å cut-off, tail corrections, Ewald 10⁻⁶.
+The narrow-pore structure was taken from the SI of *Powder Diffraction* 2019 (DOI 10.1017/S0885715619000460) through CoRE MOF 2024, the sibling of the lp file, with PACMAN-DDEC6 charges. Identity was fixed by the lattice: in the setting a′ = a + c the cell is 19.499 / 7.617 / 6.569 Å, β = 104.22°, against Loiseau's lt cell 19.51 / 7.61 / 6.58, β = 104.2°. Volume 945.8 Å³ per formula cell, mass 832.415 g/mol, identical to lp.
 
-The helium void fraction of the np phase is 0.1210 ± 0.0002 against 0.7115 for lp (0.083 vs 0.727 cm³/g). The rigid np cell then adsorbs almost nothing: 0.214 CO₂ per cell at 10 bar, still linear, against a literature np capacity of about 3.0 CO₂ per cell (Bourrelly's 0.75 CO₂ per structural OH; Ghoufi and Maurin's 3.0 per cell at 4.7 bar). The Henry constant is 340 times smaller than the experimental np value. This is not a simulation error — 2432 atoms, correct mass, no missing parameters, acceptance between 0.35 and 2.3 % — but a property of the structure: the dehydrated np cell has a pore-limiting diameter of 2.83 Å against CO₂'s 3.3 Å. The real np phase is expanded by the CO₂ it holds, which is what breathing means; a rigid np isotherm computed in the empty np cell is therefore not a physical np branch.
+**In that cell the rigid framework adsorbs essentially nothing**: 0.214 CO₂ per formula cell at 10 bar, still linear, against a literature np capacity near 3.0. The Widom Henry constant is 2.863 × 10⁻⁷ mol kg⁻¹ Pa⁻¹, **326 times below** the experimental 9.0 × 10⁻⁵. That is far too large to be a force-field error, since the same force field gets the lp saturation capacity right to 0.5 %.
 
-The osmotic construction follows Coudert et al. (2008), equations 8 and 11, with Ω_os(P) = F_host + PV_host − ∫₀^P N_ads(p) V_m(p) dp per unit cell, N_ads from a single-site Langmuir fit, and the integral evaluated both analytically for an ideal gas and numerically with the Peng–Robinson molar volume. Validated against Coudert's own experimental parameters (K_lp = 2.6 × 10⁻⁵, K_np = 9.0 × 10⁻⁵ mol kg⁻¹ Pa⁻¹, ΔF_host = 2.5 kJ mol⁻¹ per cell), it gives closing at 0.273 bar against his 0.3 (measured 0.25) and reopening at 3.97 bar against his 5–6. Peng–Robinson changes the result by 0.4 % below 100 bar. The reopening is the sensitive quantity: across ΔF = 1–4 kJ mol⁻¹ and N_max(np) = 2.5–4.0 molecules per cell it moves between 2.6 and 10.2 bar, while the closing stays within 0.08–0.65 bar. N_max(np) is an assumption taken from Bourrelly, not a fitted quantity.
+Three measurements identify the cause as the structure.
 
-With our simulated isotherms the construction predicts **no transition at all**, at any pressure, and no value of ΔF_host between 0 and 6 kJ mol⁻¹ restores one. The reason is the lp force field: its full-range Langmuir constant is 8.5 times the experimental value, so the lp osmotic potential lies below the np one everywhere. A factor of four to eight in the lp Langmuir constant does not shift the predicted breathing transitions — it removes them. That is the quantitative propagation of force-field error into a structural prediction, and it is the main result of this phase.
+**The framework is thermodynamically invisible to CO₂.** The Widom Rosenbluth factor is 1.058 and the excess chemical potential −0.14 kJ mol⁻¹ — zero within a tenth of a kJ — while the adsorption energy is −25.96 kJ mol⁻¹, *deeper* than lp's −22.83. CO₂ binds more strongly where it fits; there is almost nowhere it fits.
+
+**The distribution of insertion energies says the same.** Sampling 200 000 random rigid-CO₂ insertions per cell with the production force field and a full Ewald treatment of the guest–host term, favourable sites are 224 times rarer in np than in lp (0.068 % against 15.2 % below zero) and 1320 times rarer below −20 kJ mol⁻¹, while the deepest wells are comparable (−26.2 against −31.6 kJ mol⁻¹).
+
+**The pore is closed.** Zeo++ gives a pore-limiting diameter of 2.52 Å and a largest included sphere of 2.83 Å against CO₂'s 3.30 Å kinetic diameter, and **zero percolating accessible volume at every probe size down to helium's** — only 65.9 Å³ of isolated pockets.
+
+### The CO₂-loaded cell
+
+Serre et al. (2007) measured the np cell of MIL-53(**Cr**) under 1 bar CO₂ by in-situ synchrotron diffraction: C2/c, a = 19.713(1), b = 8.310(1), c = 6.806(1) Å, β = 105.85(1)°, V = 1072.5(1) Å³, against 19.685 / 7.849 / 6.782, β = 104.90°, V = 1012.8 Å³ for the hydrated form. **The opening is almost entirely along b, 7.849 → 8.310 Å**, with a and c fixed to 0.1–0.4 % — a shear of the lozenge, not a dilation, which is why isotropic scaling was rejected. Dundar et al. (2017) used that same Cr cell for MIL-53(Al).
+
+Our Al framework was placed in it by the volume-preserving basis change [a + c, b, −a] (determinant exactly +1), keeping fractional coordinates, atom order, labels and charges, with b doubled to preserve the genuine superstructure. The transplant stretches every bond by 2–9 %, so internal coordinates were relaxed at fixed cell with MACE-MP-0 + D3 (54 steps, f_max 0.028 eV Å⁻¹). Bond lengths returned to within 1.5 % of the original and onto the independently measured lp values; only the two X–H bonds changed materially, both *towards* physical values that X-ray systematically underestimates.
+
+MACE-MP-0 was validated first on the two empty cells: with D3 it gives 1442.3 and 947.0 Å³ against 1412.0 and 945.8 measured (+2.14 %, +0.13 %); without dispersion it tracks the dispersion-free PBE reference of Stavitski et al. instead (+1.71 %, −1.19 %). **That validation licenses only what it tests** — basin geometry at fixed or near-fixed cell. A local relaxation started from the experimental geometry stays in that basin whatever the potential, so it says nothing about the relative stability of np and lp, and no phase-stability or transition prediction rests on it.
+
+### What changes
+
+| | original np cell | CO₂-loaded cell |
+|---|---|---|
+| V per formula cell | 945.8 Å³ | 1072.5 Å³ |
+| pore-limiting diameter | 2.52 Å | 3.03 Å |
+| percolating volume, He probe | 0 | 485 Å³ (68 % of lp's) |
+| helium void fraction | 0.1210 | 0.2805 |
+| Widom K_H | 2.863 × 10⁻⁷ | **5.627 × 10⁻⁴** |
+
+**Changing the structure alone raises the Henry constant by a factor of 1965**, with the same force field, charges, cut-off and Ewald treatment. And the sign of the error inverts: against Coudert's experimental K_np the branch goes from **326× too small to 6.3× too large** — the same size and sign as the error the identical force field makes on the lp branch (7.2×). **The discrepancy was the structure; what remains is the low-coverage over-binding already characterised in section 5.**
+
+## 10. The osmotic construction, on the isotherms themselves
+
+Coudert's equation 11 is the analytical specialisation of equation 8 for a single-site Langmuir isotherm. Neither of our simulated branches is one: weighted χ²_red is 318 for the np branch and 1368 for lp. For lp the failure is not site heterogeneity — a dense search over dual-site parameters improves the raw χ² by a factor 0.99, i.e. not at all, and the residual reaches +81σ near 0.5 bar, the signature of cooperative filling. **There is no analytic Langmuir form, of any number of sites, that describes the lp branch.**
+
+Equation 8 was therefore integrated numerically on the measured points: monotone PCHIP interpolation in log p, an analytic Henry segment below the lowest point anchored on the measured Widom K_H, and the Peng–Robinson molar volume. This also disposes of N_max, which had been the most sensitive input: the integral runs from zero to the transition pressure, both transitions lie below 10 bar, and points above never enter.
+
+**Validation.** Synthetic points generated from Coudert's experimental parameters on our own pressure grid, pushed through this machinery, reproduce his analytical transitions to +0.04 % (0.273 bar) and +0.27 % (3.983 against 3.972 bar).
+
+**Result.** The double transition appears from simulation alone, where the Langmuir route gave none at any ΔF_host: 0.060 and 0.167 bar at ΔF = 2.5 kJ mol⁻¹, against 0.25–0.3 and 5–6 bar measured. Both are roughly twentyfold low. A dual-site construction on the np branch agrees to 20–30 %, so this is not an artefact of the interpolation.
+
+### Decomposing the discrepancy
+
+**Corresponding states.** Stretching each branch's pressure axis by its own measured K_sim/K_exp (7.19 for lp, 6.25 for np) puts the closing transition at **0.290 bar against 0.27 measured, 7 % high**, from twentyfold low. **The closing discrepancy is entirely Henry-regime over-binding.** The reopening moves to 1.66 bar and stops there, **3.3 times below** the measured 5–6.
+
+**Inverse ΔF_host** — one free parameter fitted to one transition, the other predicted. Coudert's 2.5 kJ mol⁻¹ was extracted from experimental isotherms, so it is not force-field-consistent. With the unscaled simulated branches **no value of ΔF_host reproduces the experimental closing pressure at all**: the window opens at small ΔF and annihilates near 2.8 kJ mol⁻¹ with the closing never exceeding 0.097 bar. Under corresponding states, ΔF_host fitted to the closing gives **2.40–2.45 kJ mol⁻¹**, within 4 % of Coudert's independently extracted 2.5, and predicts a reopening of 1.6–1.7 bar.
+
+![Osmotic construction](../results/osmotic_summary.png)
+
+### The residual factor of three
+
+Three candidate explanations, none tested here, in the order we would test them.
+
+1. **Hysteresis.** The measured 5–6 bar step is on the *adsorption* branch, which brackets the thermodynamic transition from above; Coudert notes that a single branch only brackets it. Our construction predicts the equilibrium pressure, which should lie below the adsorption step. This alone could account for a substantial part of the residual with no force-field error at all.
+2. **A rigid host cannot expand with loading.** Salles et al. (2008) show the np phase expanding progressively above about 4 CO₂ per unit cell. Ours is frozen at the 1 bar geometry, so beyond that loading it must under-hold, which moves the reopening down. A flexible-framework treatment would test this directly.
+3. **High-loading error is not the Henry-regime error.** The rescaling applies one factor per branch, measured at zero coverage. Neither branch is Langmuir, so that factor need not describe the error at the loadings that set the reopening.
+
+### Capacity of the virtual rigid host
+
+Reported, and deliberately not used in the construction: the rigid host held at the CO₂-loaded geometry takes **3.9 CO₂ per formula cell** (dual-site fit 3.907, observed 3.889 at 50 bar), against ~3.0 for the real flexible np phase and a pore-volume ceiling of 4.56 at liquid CO₂ density. A rigid host cannot relax away from a geometry that is already open, so it keeps filling where the real solid would have transformed. The 30 and 50 bar points fail the frozen-particle-number guard — sd(N)/√⟨N⟩ of 0.189 and 0.145 against 0.240 and 0.247 for the lp control, with 808 and 494 accepted insertions — so their error bars understate the uncertainty; the plateau is flat enough that 3.9 is safe to two significant figures.
 
 ## References
 
@@ -140,5 +194,12 @@ With our simulated isotherms the construction predicts **no transition at all**,
 - Loiseau, T. et al. *Chem. Eur. J.* **2004**, 10, 1373. [10.1002/chem.200305413](https://doi.org/10.1002/chem.200305413)
 - Nazarian, D.; Camp, J. S.; Sholl, D. S. *Chem. Mater.* **2016**, 28, 785. Data: Zenodo 3986573
 - Ramsahye, N. A. et al. *Adsorption* **2007**. [10.1007/s10450-007-9025-5](https://doi.org/10.1007/s10450-007-9025-5)
+- Serre, C. et al. *Adv. Mater.* **2007**, 19, 2246 — in-situ synchrotron XRD of CO₂-induced breathing; the np(Cr) cell under 1 bar CO₂ used here
+- Salles, F. et al. *Angew. Chem. Int. Ed.* **2008**, 47, 8487. [10.1002/anie.200803067](https://doi.org/10.1002/anie.200803067)
+- Dundar, E. et al. *J. Mol. Model.* **2017** (volume/pages not verified here). [10.1007/s00894-017-3281-4](https://doi.org/10.1007/s00894-017-3281-4) — precedent for the Cr CO₂-np cell applied to Al
+- Stavitski, E. et al. *Langmuir* **2011**, 27, 3970 — plain-PBE MIL-53(Al) cells, used as a dispersion-free reference
+- Liu, Y. et al. *J. Am. Chem. Soc.* **2008**, 130, 11813 — empty low-temperature np MIL-53(Al)
+- Batatia, I. et al. MACE-MP-0, **2023**. [arXiv:2401.00096](https://arxiv.org/abs/2401.00096)
+- Willems, T. F. et al. Zeo++. *Microporous Mesoporous Mater.* **2012**, 149, 134
 - Dubbeldam, D. et al. RASPA. *Mol. Simul.* **2016**, 42, 81
 - Frenkel, D.; Smit, B. *Understanding Molecular Simulation*, 3rd ed., 2023
