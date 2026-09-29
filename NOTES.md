@@ -1597,6 +1597,105 @@ Stated as candidates, in the order we would test them:
 These are not ranked by likelihood, and (1) alone could account for a substantial part of
 the residual without any force-field error at all.
 
+**5.8.7 Final numbers, with the measured Henry anchors.**
+
+Both Henry constants are now measured, not assumed (`runs/henry_widom_CO2_*`, RASPA
+Widom, same force field, charges, Ewald and temperature as the isotherms):
+
+| cell | K_H [mol/kg/Pa] | Rosenbluth | <U_gh> [kJ/mol] |
+|---|---|---|---|
+| lp, SABVUN-DDEC | 1.86944e-4 +/- 1.58e-6 | 461.6 | -22.828 |
+| np, original (closed) | 2.8631e-7 +/- 4.01e-9 | 1.058 | -25.956 +/- 0.177 |
+| **np, CO2 cell** | **5.6274e-4 +/- 9.11e-6** | **1833.1 +/- 29.7** | **-37.054 +/- 0.064** |
+
+The Python sampler of 5.6b predicted 5.50e-4 for the CO2 cell after its lp bias
+correction; the measured value is 5.6274e-4, **2.3 % away**, which validates that sampler
+independently.
+
+**The numerical construction, measured anchors, dF = 2.5 kJ/mol:**
+
+| | lp -> np | np -> lp |
+|---|---|---|
+| (a) experiment, Coudert parameters | 0.273 | 3.998 bar |
+| (b) simulation, as computed, lp-DDEC | 0.060 | 0.167 bar |
+| (b) simulation, as computed, lp-PACMAN | 0.054 | 0.169 bar |
+| **(c) corresponding states, lp-DDEC** | **0.290** | **1.659 bar** |
+| (c) corresponding states, lp-PACMAN | 0.280 | 1.582 bar |
+| measured | 0.25-0.3 | 5-6 bar |
+
+**Check 1 sharpens with the measured anchor**: f_np = 6.253 (was 5.45 on the
+lowest-point anchor), and the rescaled closing lands at **0.290 bar against 0.27
+measured -- 7 % high**, from 20x low unrescaled. The reopening residual becomes
+**3.2-3.4x** (was 2.7-3.1x).
+
+**Check 2, one parameter fitted to one transition:**
+
+| branches | dF fitted to closing 0.27 bar | np -> lp predicted | vs 5-6 bar |
+|---|---|---|---|
+| unscaled, either lp | **unreachable at any dF** (max 0.093-0.097 bar) | - | - |
+| rescaled, lp-DDEC | **2.402 kJ/mol** | 1.709 bar | 3.22x low |
+| rescaled, lp-PACMAN | **2.446 kJ/mol** | 1.606 bar | 3.42x low |
+
+The fitted dF_host of **2.40-2.45 kJ/mol** sits within 4 % of Coudert's 2.5 extracted
+from the experimental isotherms -- an independent consistency check on the construction,
+since nothing in our route used his value.
+
+**5.8.8 Cross-check: dual-site Langmuir (`scripts/dual_site.py`).**
+
+| branch | dual-site chi2_red | single-site chi2_red | improvement |
+|---|---|---|---|
+| np CO2 cell (13 pts) | **12.13** | 545.3 | **45x** |
+| lp SABVUN-DDEC (12 pts) | 1710 (collapses to one site) | 1368 | **none** |
+| lp PACMAN (4 pts) | 311 (collapses) | 155.6 | none |
+
+The np branch is well described by two sites -- a weak one (N1 = 1.39 mol/kg,
+b1 = 0.435 /bar) and a strong one (N2 = 3.30, b2 = 16.6 /bar), total 3.907 CO2/cell.
+**The lp branch resists both one and two sites.** A dense 120 x 120 grid search over
+(b1, b2) improves the raw chi2 by a factor 0.99, i.e. not at all: the optimum has
+b1 = b2 and N2 = 0. The lp isotherm rises far more steeply near 0.5 bar than any sum of
+two Langmuir terms allows (+81 sigma residual there), which is the signature of
+cooperative filling rather than site heterogeneity. **This is the strongest argument for
+the numerical route**: for the lp branch there is no analytic Langmuir form, of any
+number of sites, that describes the data.
+
+Running the analytical construction on the dual-site fits (lp-DDEC + np, dF = 2.5) gives
+0.078 and 0.202 bar against the numerical 0.060 and 0.167 -- **agreement to 20-30 %**,
+which bounds how much the functional form still matters and confirms the numerical
+result is not an artefact of the interpolation.
+
+**5.8.9 Capacity of the virtual rigid host (reported, NOT used in the construction).**
+
+The 20, 30 and 50 bar points were added to complete the isotherm; they do not enter the
+construction, whose integral stops below 10 bar.
+
+| source | N_max [CO2 per formula cell] |
+|---|---|
+| observed at 50 bar | 3.889 |
+| dual-site fit, N1 + N2 | **3.907** |
+| single-site fit (poor) | 3.577 |
+| Salles 2008, flexible np | **~3.0** |
+| pore-volume ceiling, theta_He 0.2805 at liquid CO2 density | **4.56** |
+
+The rigid host held at the CO2-loaded geometry takes **3.9 CO2 per formula cell, 30 %
+more than the real flexible np phase and 85 % of what its pore volume allows at liquid
+density**. That is what a virtual rigid-host branch should do: it cannot relax away from
+a geometry that is already open, so it keeps filling where the real solid would have
+transformed.
+
+**Sampling caveat, stated rather than buried.** The 30 and 50 bar points **fail the
+frozen-N guard**: sd(N)/sqrt(<N>) = 0.189 and 0.145 against 0.240 and 0.247 for the
+trusted lp control at the same pressures, with only 808 and 494 accepted insertions
+against the lp control's 7,998 and 5,993. Insertion acceptance in this small pore falls
+to 0.07 % and 0.04 %, roughly 7x lower than lp at the same pressure, so 50,000 cycles
+under-sample them. Their quoted error bars therefore understate the true uncertainty.
+The 20 bar point passes (0.216). **None of this touches the construction** -- it affects
+only the capacity figures above, and the plateau is flat enough (+1.2 % from 20 to 30
+bar, +2.2 % from 30 to 50) that 3.9 CO2/cell is safe to two significant figures.
+
+**Figure: `results/osmotic_summary.png`**, three panels -- experiment, simulation as
+computed, simulation under corresponding states -- with both transitions marked and the
+measured windows shown as grey bands.
+
 ## What a rigid-framework GCMC can and cannot reproduce for MIL-53
 (rewritten 2026-09-20 against our own numbers)
 

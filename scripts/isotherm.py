@@ -93,9 +93,21 @@ def convergence_guards(data_file, nblocks=5):
     # A point is called drifting only if the endpoint test fires AND the loading trend
     # across 10 blocks is genuinely directional; joint false-positive rate ~6 %.
     n10 = len(N) // 10 * 10
+    first_gap = np.nan
+    under_equilibrated = False
     if n10 >= 10:
         b10 = N[len(N) - n10:].reshape(10, -1).mean(axis=1)
         trend = float(np.corrcoef(np.arange(10), b10)[0, 1]) if b10.std() > 0 else 0.0
+        # Equilibration check, independent of the trend test. A run started from an
+        # empty box at high loading may still be filling during the first production
+        # block; the trend statistic can miss that, because one low block among ten
+        # barely moves a correlation. So the first block is compared directly with
+        # the other nine: if it sits more than 2 sd below them, initialisation was too
+        # short for THAT point and it needs more init cycles, not more production.
+        rest = b10[1:]
+        sd_rest = float(rest.std(ddof=1))
+        first_gap = float((b10[0] - rest.mean()) / sd_rest) if sd_rest > 0 else 0.0
+        under_equilibrated = bool(first_gap < -2.0)
     else:
         trend = 0.0
     sd = float(prod.N_box.std())
@@ -103,6 +115,7 @@ def convergence_guards(data_file, nblocks=5):
     # a Poisson-like floor: sd(N) should be of order sqrt(N) in the grand canonical
     # ensemble; far below that means the particle number is not really moving
     return {"drift_N_box": drift, "drift_err95_N_box": err95, "trend_r_10blocks": trend,
+            "first_block_sd_below_rest": first_gap, "under_equilibrated": under_equilibrated,
             "drifting": bool(abs(drift) > max(err95, 1e-12) and abs(trend) >= 0.5),
             "drift_endpoint_only": bool(abs(drift) > max(err95, 1e-12)),
             "sd_N_box": sd, "mean_N_box": mean_n,
@@ -164,7 +177,8 @@ def main(argv=None):
             "acc_insertion", "accepted_insertion", "acc_deletion", "accepted_deletion",
             "acc_reinsertion", "acc_translation", "acc_rotation", "cycles_init", "cycles_prod",
             "drift_N_box", "drift_err95_N_box", "trend_r_10blocks", "drifting",
-            "drift_endpoint_only", "sd_N_box", "mean_N_box",
+            "drift_endpoint_only", "first_block_sd_below_rest", "under_equilibrated",
+            "sd_N_box", "mean_N_box",
             "sd_over_sqrtN", "frozen_N", "n_trace",
             "n_warnings", "missing_vdw_pairs", "file"]
     csv = out / f"{a.out_prefix}.csv"
@@ -196,6 +210,10 @@ def main(argv=None):
         print(f"  (info: {r.p_bar:g} bar trips the endpoint drift test "
               f"[{r.drift_N_box:+.2f} vs {r.drift_err95_N_box:.2f}] but its 10-block trend is "
               f"r = {r.trend_r_10blocks:+.2f}, not directional -- endpoint noise, not filling)")
+    for _, r in df[df.get("under_equilibrated", False) == True].iterrows():
+        print(f"  GUARD FAIL: {r.p_bar:g} bar is UNDER-EQUILIBRATED -- the first production "
+              f"block sits {abs(r.first_block_sd_below_rest):.1f} sd below the mean of the other "
+              f"nine; extend INITIALISATION for this point, not production")
     for _, r in df[df.get("frozen_N", False) == True].iterrows():
         print(f"  GUARD FAIL: {r.p_bar:g} bar has sd(N) = {r.sd_N_box:.2f} against sqrt(<N>) = "
               f"{np.sqrt(r.mean_N_box):.2f}; the particle number is effectively frozen, so the "
