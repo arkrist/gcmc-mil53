@@ -1494,6 +1494,32 @@ than the worst Phase-3 point**, which itself returned 0.59 % relative error. Acc
 higher here than in the lp cell at comparable loading because the pore is smaller, so a
 successful insertion is a larger fraction of the accessible volume.
 
+**5.8.3b Two more guards, and the two things they caught.**
+
+*An equilibration test, separate from the drift test.* A run started from an empty box at
+high loading can still be filling during its first production block, and the ten-block
+trend statistic of 5.8.2 can miss that: one low block among ten barely moves a
+correlation. So the first production block is compared directly with the mean of the
+other nine, and a point whose first block sits more than 2 sd below them is flagged as
+needing longer INITIALISATION, not more production.
+
+**It caught the 0.5 bar point**: first block 2.09 sd below the rest, while its ten-block
+trend was r = +0.23, i.e. invisible to the drift test. The point was rerun with 100,000
+initialisation cycles instead of 20,000 and then passed at -0.46 sd; its loading moved
+from 2.677 to 2.687 CO2 per formula cell. The short-init output is kept beside it as
+`Output.superseded_init20k_*` rather than deleted. It is the only point in the set with a
+non-default initialisation, and `cycles_init` records that per point in the CSV.
+
+*A guard against writing a framework with no charges.* `mace_relax.py` wrote its relaxed
+structure through ASE's CIF writer, which has no `_atom_site_charge` column. RASPA reads
+framework charges from exactly that column and would have run an **uncharged** framework
+without complaining -- and since switching the charges off moves K_H by only ~15 % for
+the lp cell, the resulting isotherm would have looked plausible. Nothing reached a
+production run: the structure actually used was built with `traj_to_cif.py`, which
+re-attaches labels and charges by index after asserting the atom order is unchanged
+element by element. Such files are now written with a `_NOCHARGES` suffix and a header
+saying they are unusable for GCMC.
+
 **5.8.4 The osmotic construction, done properly: numerical integration of eq. 8.**
 
 Coudert eq. 11 is only the analytical specialisation of eq. 8 for a single-site

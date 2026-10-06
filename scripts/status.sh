@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Print the state of every GCMC run in runs/ without needing Claude Code.
+# Print the state of every GCMC run in runs/ from a plain terminal.
 #
 # A pressure point is DONE when its Output/System_0/*.data contains
 # "Simulation finished" -- the same test scripts/run_isotherm.sh uses to decide
